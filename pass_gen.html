@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎫 Ticket Manager - Pro Verifier</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#0057E7',
+                        'secondary-gray': '#E5E7EB',
+                        'accent-red': '#FF4500',
+                        'dark-bg': '#1f2937',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Load Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Fira+Code&display=swap');
+        
+        body { overscroll-behavior-y: none; }
+
+        .pass-canvas {
+            /* APPLE WALLET SIZE: 320 wide x 450 high */
+            width: 320px;
+            height: 450px; 
+            background: linear-gradient(135deg, #1f2937, #111827);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            margin: 0 auto; /* Center horizontally */
+        }
+
+        /* Editor specific grid */
+        .pass-canvas.editor-grid {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(135deg, #1f2937, #111827);
+            background-size: 20px 20px, cover;
+        }
+
+        .pass-canvas.valid-ticket { border-color: #22c55e; box-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+        .pass-canvas.invalid-ticket { border-color: #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.5); }
+
+        .draggable-field {
+            cursor: move;
+            position: absolute;
+            z-index: 10;
+            padding: 4px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            user-select: none;
+        }
+
+        .draggable-field:hover, .draggable-field.active {
+            border: 1px dashed rgba(255, 255, 255, 0.6);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .draggable-field.dragging { opacity: 0.8; cursor: grabbing; border: 1px dashed #3b82f6; background-color: rgba(59, 130, 246, 0.1); }
+
+        /* SNAP GUIDES */
+        .snap-guide {
+            position: absolute;
+            background-color: #ec4899; /* Pink-500 for Magenta */
+            z-index: 50;
+            pointer-events: none;
+        }
+        .snap-guide.vertical { width: 1px; height: 100%; top: 0; }
+        .snap-guide.horizontal { height: 1px; width: 100%; left: 0; }
+        
+        /* Gap lines for equal spacing */
+        .gap-guide {
+            position: absolute;
+            border-bottom: 1px dashed #ec4899;
+            top: 50%;
+            height: 1px;
+            z-index: 49;
+            pointer-events: none;
+        }
+        .gap-guide::before, .gap-guide::after {
+            content: ''; position: absolute; width: 1px; height: 6px; background: #ec4899; top: -3px;
+        }
+        .gap-guide::before { left: 0; }
+        .gap-guide::after { right: 0; }
+
+
+        .pass-label { font-size: 0.65rem; font-weight: 500; text-transform: uppercase; margin-bottom: 2px; pointer-events: none; }
+        .pass-value { font-size: 1rem; font-weight: 700; white-space: nowrap; pointer-events: none; }
+        .pass-heading { pointer-events: none; }
+
+        .qr-code-container { background-color: white; border-radius: 6px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(2px); }
+        
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+
+        .scan-region { 
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7); 
+            z-index: 100; /* Increased Z-index for the reticle box */
+        }
+        .rule-input { background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 0.375rem; padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+        
+        .color-input-wrapper { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: #6b7280; }
+        .color-input-wrapper input[type="color"] { width: 24px; height: 24px; padding: 0; border: none; border-radius: 4px; cursor: pointer; }
+
+        .lock-btn { background: none; border: none; cursor: pointer; opacity: 0.5; transition: opacity 0.2s; }
+        .lock-btn:hover { opacity: 1; }
+        .lock-btn.locked { opacity: 1; color: #d97706; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* QR Code Generator Fix */
+        .generated-qr img {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 1024px) {
+            .app-container {
+                padding: 0;
+            }
+            .lg\:w-1\/4 {
+                width: 100%;
+            }
+            .lg\:w-3\/4 {
+                width: 100%;
+            }
+            /* Style grid items stack nicely */
+            .grid.md\:grid-cols-4 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .md\:grid-cols-3 {
+                grid-template-columns: 1fr;
+            }
+            .lg\:col-span-2, .lg\:col-span-3 {
+                grid-column: span 1 / span 1;
+            }
+            .pass-canvas {
+                 /* Scale down to fit mobile width, max-w-[90vw] */
+                max-width: 90vw;
+                height: auto; 
+                aspect-ratio: 32 / 45; /* Maintain 320x450 aspect ratio */
+                margin: 16px auto;
+            }
+            .pass-canvas.editor-grid, .pass-canvas {
+                /* Reset background for better mobile visibility if needed */
+                background-size: cover;
+            }
+            /* Adjust padding on main content area */
+            .p-6 {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 font-sans text-gray-800">
+
+    <div id="app" class="app-container max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+        <!-- Header -->
+        <header class="p-6 bg-white border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 tracking-tight">🎫 Ticket Manager Pro</h1>
+                <p class="text-sm text-gray-500 mt-1">Design • Generate • Validate</p>
+            </div>
+            <div class="mt-4 md:mt-0 text-right flex gap-2">
+                <div class="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-600">
+                    <span class="w-2 w-2 rounded-full bg-yellow-400 mr-2" id="keyStatusDot"></span>
+                    <span id="secretKeyDisplay">NO KEY</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="flex border-b border-gray-200 bg-gray-50">
+            <button id="tab-editor" onclick="showTab('editor')" class="tab-button active flex-1 py-4 text-sm font-semibold text-center border-b-2 border-primary-blue text-primary-blue transition-colors hover:bg-gray-100">🎨 Designer</button>
+            <button id="tab-create" onclick="showTab('create')" class="tab-button flex-1 py-4 text-sm font-semibold text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">🎫 Generator</button>
+            <button id="tab-verify" onclick="showTab('verify')" class="tab-button flex-1 py-4 text-sm font-semibold text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">🔍 Verifier</button>
+        </nav>
+
+        <div class="p-6">
+            <!-- EDITOR -->
+            <div id="content-editor" class="tab-content">
+                <!-- Top Row: Components + Canvas (Stacked on mobile) -->
+                <div class="flex flex-col lg:flex-row gap-8 mb-8">
+                    <!-- Column 1: Components Palette -->
+                    <div class="lg:w-1/4 flex flex-col h-full min-h-[250px] lg:min-h-[450px]">
+                        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col h-full">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex-shrink-0">Components</h3>
+                            <!-- Scrollable Area -->
+                            <div id="fieldPalette" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Canvas Area -->
+                    <div class="lg:w-3/4 flex flex-col">
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">✏️</span>
+                                <input type="text" id="templateNameSave" value="PASS_WALLET_CARD" class="bg-transparent font-bold text-gray-800 border-b border-gray-300 focus:border-primary-blue focus:outline-none px-1 uppercase" placeholder="TEMPLATE ID">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button onclick="triggerClearModal()" class="text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1 px-2 py-1 border border-red-200 rounded hover:bg-red-50 transition-colors" title="Clear All Fields">
+                                    🗑️ Clear All
+                                </button>
+                                <div class="text-xs text-gray-400 font-mono hidden sm:block">Hold Shift to Disable Snap</div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex justify-center items-center bg-gray-100 p-2 sm:p-8 rounded-xl border border-gray-200 overflow-hidden relative min-h-[200px] lg:min-h-[400px]">
+                            <div id="passCanvas" class="pass-canvas editor-grid rounded-xl relative">
+                                <div id="snapGuidesContainer" class="absolute inset-0 pointer-events-none z-50"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between pt-2 text-sm text-gray-400">
+                             <div id="fieldCount">0 Fields</div>
+                             <div>Drag components to add</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Row: Style Section (Full Width) -->
+                <div class="w-full bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-8">
+                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-6 border-b pb-2">Style & Customization</h3>
+                    
+                    <div class="grid md:grid-cols-4 gap-8">
+                        <!-- Quick Themes -->
+                        <div>
+                             <label class="block text-xs font-bold text-gray-500 mb-3">Quick Themes</label>
+                             <div class="grid grid-cols-4 gap-2">
+                                <button onclick="applyTheme('standard')" class="h-8 w-full rounded bg-blue-500 border-2 border-transparent hover:border-gray-400" title="Standard Blue"></button>
+                                <button onclick="applyTheme('cyber')" class="h-8 w-full rounded bg-green-400 border-2 border-transparent hover:border-gray-400" title="Cyber Green"></button>
+                                <button onclick="applyTheme('gold')" class="h-8 w-full rounded bg-yellow-500 border-2 border-transparent hover:border-gray-400" title="Gold"></button>
+                                <button onclick="applyTheme('stark')" class="h-8 w-full rounded bg-gray-200 border-2 border-transparent hover:border-gray-400" title="Stark White"></button>
+                            </div>
+                        </div>
+
+                        <!-- Colors -->
+                        <div class="space-y-3">
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Colors</label>
+                            <div class="flex justify-between items-center"><label class="text-sm text-gray-600">Border</label><input type="color" id="outlineColor" value="#FFFFFF" onchange="updateColors()"></div>
+                            <div class="flex justify-between items-center"><label class="text-sm text-gray-600">Labels</label><input type="color" id="labelColor" value="#9CA3AF" onchange="updateColors()"></div>
+                            <div class="flex justify-between items-center"><label class="text-sm text-gray-600">Values</label><input type="color" id="valueColor" value="#FFFFFF" onchange="updateColors()"></div>
+                            <div id="valueContrastWarn" class="text-[10px] text-red-500 font-bold hidden text-right">⚠️ Low Contrast</div>
+                        </div>
+
+                        <!-- Sliders/Upload -->
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs font-bold text-gray-500">Border Width</label>
+                                    <span id="borderWidthDisplay" class="text-xs text-gray-400">2px</span>
+                                </div>
+                                <input type="range" id="outlineWidth" min="0" max="10" value="2" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateColors()">
+                            </div>
+                             <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">Background Image</label>
+                                <input type="file" id="editorBgInput" accept="image/*" class="text-xs w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onchange="handleBgUpload(this, 'passCanvas')">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Save Actions (Full Width) -->
+                <div class="w-full bg-gray-50 p-6 rounded-xl border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div>
+                        <h4 class="font-bold text-gray-800">Ready to Publish?</h4>
+                        <p class="text-sm text-gray-500">Saving generates a secure encryption key.</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="saveTemplate()" class="bg-gray-900 hover:bg-black text-white font-bold py-3 px-8 rounded-lg shadow-lg flex items-center gap-2 transform transition hover:scale-105">
+                            <span>💾</span> Save Template
+                        </button>
+                        <button id="showMasterQrBtn" onclick="showMasterQR()" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg flex items-center gap-2 transform transition hover:scale-105">
+                            <span>🔐</span> Show Setup QR
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Key Output (Hidden initially) -->
+                <div id="savedKeyOutput" class="hidden w-full p-4 bg-green-50 border border-green-200 rounded-lg mt-4">
+                    <h4 class="font-bold text-green-900">Template Saved Successfully!</h4>
+                    <p class="text-sm text-green-800">Save this Key. It is required to authenticate.</p>
+                    <div class="mt-2 bg-white p-3 rounded border border-green-200 font-mono text-lg break-all select-all text-gray-800 text-center font-bold tracking-widest" id="keyToSave"></div>
+                </div>
+
+            </div>
+
+            <!-- CREATION -->
+            <div id="content-create" class="tab-content hidden">
+                <div class="max-w-4xl mx-auto space-y-8">
+                    <!-- Manual Load -->
+                    <div id="template-loader" class="bg-white p-6 rounded-xl border-2 border-dashed border-gray-300">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4">🔐 Load Template</h2>
+                        <div class="grid md:grid-cols-3 gap-4 items-end">
+                            <div><label class="text-xs font-bold text-gray-500 uppercase">Template Name</label><input type="text" id="templateNameLoad" value="PASS_WALLET_CARD" class="w-full p-2 border rounded-lg"></div>
+                            <div><label class="text-xs font-bold text-gray-500 uppercase">Encryption Key</label><input type="text" id="encryptionKeyLoad" placeholder="Paste key..." class="w-full p-2 border rounded-lg font-mono text-sm"></div>
+                            <button onclick="loadAndAuthenticateTemplate()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Load</button>
+                        </div>
+                        <p id="authStatus" class="mt-3 text-sm font-medium hidden"></p>
+                    </div>
+
+                    <div id="creation-section" class="opacity-50 pointer-events-none transition-opacity duration-300">
+                        <div class="grid lg:grid-cols-5 gap-8">
+                            <div class="lg:col-span-2 space-y-4">
+                                <h3 class="font-bold text-gray-800 border-b pb-2">Ticket Data</h3>
+                                <div id="dynamicInputForm" class="space-y-4"></div>
+                                
+                                <!-- Background Image for Generation -->
+                                <div class="mt-4 pt-4 border-t">
+                                    <label class="block text-xs font-bold text-gray-500 mb-2">Ticket Background (Optional)</label>
+                                    <input type="file" id="generatorBgInput" accept="image/*" class="text-xs w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onchange="handleBgUpload(this, 'boardingPassContainer')">
+                                </div>
+                                
+                                <!-- Generator Options -->
+                                <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" id="genQrOnly" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500">
+                                        <label for="genQrOnly" class="text-sm font-bold text-gray-700">Print QR Code Only</label>
+                                    </div>
+                                </div>
+
+                                <button onclick="generateTicket()" id="genBtn" class="w-full mt-4 bg-gray-900 text-white font-bold py-3 rounded-xl shadow-lg">Generate Ticket</button>
+
+                                <!-- SALES SESSION MANAGER -->
+                                <div class="mt-8 p-5 bg-blue-50 border border-blue-100 rounded-xl">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <h4 class="font-bold text-blue-900 flex items-center gap-2">📦 Sales Session</h4>
+                                        <span id="sessionCount" class="text-xs bg-white border border-blue-200 text-blue-800 px-3 py-1 rounded-full font-mono font-bold">0</span>
+                                    </div>
+                                    <p class="text-xs text-blue-600 mb-4 leading-relaxed">Start a session to record multiple tickets into a single JSON file for export.</p>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <button id="btnToggleSession" onclick="toggleSession()" class="bg-white border border-red-300 text-red-600 font-bold py-2 rounded-lg hover:bg-red-50 text-xs transition-colors">Start Session</button>
+                                        <button id="btnDownloadSession" onclick="downloadSessionReport()" disabled class="bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs transition-colors flex items-center justify-center gap-2">
+                                            <span>📥</span> Download JSON
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="lg:col-span-3">
+                                <h3 class="font-bold text-gray-800 border-b pb-2 mb-4">Preview</h3>
+                                <div class="flex justify-center mb-4">
+                                    <div id="boardingPassContainer" class="pass-canvas rounded-xl relative shadow-2xl scale-90 sm:scale-100 origin-top"></div>
+                                </div>
+                                <button id="downloadPdfBtn" onclick="downloadPdf()" class="w-full bg-green-600 text-white font-bold py-2 rounded-lg" disabled>Download PDF</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VERIFICATION -->
+            <div id="content-verify" class="tab-content hidden">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <details class="group bg-white rounded-xl border border-gray-200 shadow-sm open">
+                        <summary class="p-6 cursor-pointer flex justify-between items-center bg-gray-50 rounded-t-xl border-b border-gray-100">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-blue-100 p-2 rounded-lg text-blue-600">⚙️</div>
+                                <div>
+                                    <h2 class="text-lg font-bold text-gray-900">Scanner Setup</h2>
+                                    <p class="text-xs text-gray-500" id="verifierStatus">Waiting for Setup QR...</p>
+                                </div>
+                            </div>
+                            <span class="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div class="p-6 space-y-6">
+                            <div class="grid md:grid-cols-3 gap-4 items-end mb-6">
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Active Template</label>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="verifierTemplateName" class="flex-1 p-2 bg-gray-50 border rounded font-mono text-sm" readonly placeholder="Not Configured">
+                                    </div>
+                                </div>
+                                <button onclick="startScanner('SETUP')" class="bg-gray-900 hover:bg-black text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
+                                    📷 Scan Setup QR
+                                </button>
+                            </div>
+                            <!-- Validation Logic Rules (Same as before) -->
+                            <div class="border-t border-gray-100 pt-4">
+                                <h3 class="text-sm font-bold text-gray-800 mb-4 uppercase flex items-center gap-2"><span>Validation Logic</span><span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full normal-case">Customizable</span></h3>
+                                <div class="space-y-3">
+                                    <!-- Duplicates -->
+                                    <details class="border border-gray-200 rounded-lg overflow-hidden"><summary class="bg-gray-50 p-3 text-sm font-medium cursor-pointer hover:bg-gray-100 flex items-center justify-between"><span>🔂 Duplicate Prevention</span><input type="checkbox" id="ruleDupesEnabled" checked class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white text-xs text-gray-600 space-y-2"><p>Uses unique Hex ID.</p><div class="flex items-center justify-between mt-2 pt-2 border-t"><div class="color-input-wrapper"><input type="color" id="ruleDupesColor" value="#ff0000"><span>Violation Color</span></div></div></div></details>
+                                    <!-- Age -->
+                                    <details class="border border-gray-200 rounded-lg overflow-hidden"><summary class="bg-gray-50 p-3 text-sm font-medium cursor-pointer hover:bg-gray-100 flex items-center justify-between"><span>🔞 Age Restrictions</span><input type="checkbox" id="ruleAgeEnabled" class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold mb-1">Min Age</label><input type="number" id="ruleAgeMin" value="0" class="rule-input w-full"></div><div><label class="block text-xs font-bold mb-1">Max Age</label><input type="number" id="ruleAgeMax" value="100" class="rule-input w-full"></div><div class="col-span-2 border-t mt-2 pt-2 bg-gray-50 p-3 rounded"><label class="block text-xs font-bold mb-1 text-blue-600">Special Alert</label><div class="flex items-center gap-4"><div><span class="text-xs text-gray-500 mr-2">If age < </span><input type="number" id="ruleAgeAlertThreshold" value="18" class="rule-input w-16 text-center"></div><div class="color-input-wrapper"><input type="color" id="ruleAgeAlertColor" value="#FFA500"><span>Set Color</span></div></div></div></div></details>
+                                    <!-- Time -->
+                                    <details class="border border-gray-200 rounded-lg overflow-hidden"><summary class="bg-gray-50 p-3 text-sm font-medium cursor-pointer hover:bg-gray-100 flex items-center justify-between"><span>📅 Validity Period</span><input type="checkbox" id="ruleTimeEnabled" class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white space-y-4"><div><label class="block text-xs font-bold mb-1">Logic Mode</label><select id="ruleTimeMode" class="w-full rule-input text-xs" onchange="toggleTimeInputs()"><option value="range">Time Range</option><option value="single">Single Date</option><option value="start">Event Start</option></select></div><div id="timeInputRange" class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold mb-1">Start</label><input type="datetime-local" id="ruleTimeStart" class="rule-input w-full"></div><div><label class="block text-xs font-bold mb-1">End</label><input type="datetime-local" id="ruleTimeEnd" class="rule-input w-full"></div></div><div id="timeInputSingle" class="hidden"><label class="block text-xs font-bold mb-1">Valid Date</label><input type="date" id="ruleTimeSingleDate" class="rule-input w-full"></div><div id="timeInputStart" class="hidden"><label class="block text-xs font-bold mb-1">Event Start Time</label><input type="datetime-local" id="ruleTimeEventStart" class="rule-input w-full"></div><div class="flex items-center justify-between mt-2 pt-2 border-t"><div class="color-input-wrapper"><input type="color" id="ruleTimeColor" value="#ff0000"><span>Invalid Time Color</span></div></div></div></details>
+                                    <!-- Custom -->
+                                    <details class="border border-blue-200 rounded-lg overflow-hidden"><summary class="bg-blue-50 p-3 text-sm font-medium cursor-pointer hover:bg-blue-100 flex items-center justify-between text-blue-900"><span>⚡ Advanced Logic (JS)</span><input type="checkbox" id="ruleCustomEnabled" class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white space-y-2"><p class="text-xs text-gray-500">Write JS.</p><textarea id="ruleCustomScript" rows="3" class="w-full p-2 border rounded font-mono text-xs bg-gray-50" placeholder="if (data.Seat.startsWith('A')) return {valid:true, color:'#FFD700', text:'GOLD VIP'}; return true;"></textarea></div></details>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div class="bg-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-800 p-8 text-center min-h-[300px] flex flex-col items-center justify-center">
+                        <div class="mb-6"><h2 class="text-2xl font-bold text-white mb-2">Ready to Verify</h2><p class="text-gray-400">Ensure scanner setup is complete above.</p></div>
+                        <button onclick="startScanner('VERIFY')" class="bg-blue-600 hover:bg-blue-500 text-white text-lg font-bold py-4 px-8 rounded-full shadow-lg transform transition hover:scale-105 flex items-center gap-3"><span>📷</span><span>Scan Ticket</span></button>
+                        <div id="verifyResultContainer" class="mt-8 hidden w-full flex flex-col items-center justify-center"><div id="verifyResultCardWrapper" class="flex justify-center transform scale-90 sm:scale-100"></div><div id="verifyStatusText" class="mt-4 text-xl font-bold"></div><button onclick="startScanner('VERIFY')" class="mt-6 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full border border-gray-600 flex items-center gap-2 transition-colors"><span>↻</span> Scan Next Ticket</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals (Toast, Confirm, Scanner, Config, MasterQR) -->
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[80] hidden px-6 py-3 rounded-full shadow-xl font-bold text-white transition-all duration-300 transform scale-90 opacity-0 pointer-events-none"></div>
+    <div id="confirmModal" class="fixed inset-0 z-[70] hidden bg-black/60 flex items-center justify-center backdrop-blur-sm p-4"><div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full text-center"><div class="mb-4 text-red-500 text-4xl">🗑️</div><h3 class="text-xl font-bold text-gray-900 mb-2">Clear Workspace?</h3><p class="text-sm text-gray-500 mb-6">This will remove all fields.</p><div class="grid grid-cols-2 gap-3"><button onclick="$('confirmModal').classList.add('hidden')" class="py-2.5 rounded-lg font-bold text-gray-600 bg-gray-100 hover:bg-gray-200">Cancel</button><button onclick="performClear()" class="py-2.5 rounded-lg font-bold text-white bg-red-600 hover:bg-red-700">Yes, Clear</button></div></div></div>
+    <div id="scannerModal" class="fixed inset-0 z-[60] flex flex-col items-center justify-center p-4 backdrop-blur-sm hidden">
+        <div class="relative w-full max-w-md aspect-[3/4] bg-black rounded-3xl overflow-hidden border border-gray-700 shadow-2xl">
+            <!-- Video -->
+            <video id="scannerVideo" class="absolute inset-0 w-full h-full object-cover"></video>
+            <canvas id="scannerCanvas" class="hidden"></canvas>
+            
+            <!-- Darken Overlay with cut-out (z-index 50) -->
+            <div class="absolute inset-0 flex items-center justify-center z-50">
+                <!-- Reticle Box (z-index 100) -->
+                <div class="w-64 h-64 border-2 border-white/50 rounded-xl relative scan-region">
+                     <!-- Corners (z-index > 100) -->
+                     <div class="absolute top-0 left-0 w-6 h-6 border-l-4 border-t-4 border-blue-500 -ml-1 -mt-1 rounded-tl-lg z-50"></div>
+                     <div class="absolute top-0 right-0 w-6 h-6 border-r-4 border-t-4 border-blue-500 -mr-1 -mt-1 rounded-tr-lg z-50"></div>
+                     <div class="absolute bottom-0 left-0 w-6 h-6 border-l-4 border-b-4 border-blue-500 -ml-1 -mb-1 rounded-bl-lg z-50"></div>
+                     <div class="absolute bottom-0 right-0 w-6 h-6 border-r-4 border-b-4 border-blue-500 -mr-1 -mb-1 rounded-br-lg z-50"></div>
+                </div>
+            </div>
+
+            <!-- UI Text (z-index 50) -->
+            <div class="absolute top-8 left-0 right-0 text-center px-4 z-50">
+                <div id="scannerTitle" class="text-white font-bold text-xl drop-shadow-md">Scanning...</div>
+                <div id="scannerSub" class="text-gray-300 text-sm drop-shadow-md mt-1">Position code in box</div>
+            </div>
+
+            <!-- Close (z-index 50) -->
+             <button onclick="stopScanner()" class="absolute top-6 right-6 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 backdrop-blur-md transition-colors z-50">
+                <svg class="w-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="scanFeedback" class="mt-4 text-white font-bold h-6"></div>
+    </div>
+    <div id="masterQrModal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-backdrop p-4"><div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm text-center"><h3 class="text-xl font-bold text-gray-900 mb-2">Setup QR Code</h3><p class="text-sm text-gray-500 mb-4">Scan this in the Verifier tab.</p><div id="masterQrTarget" class="flex justify-center mb-4"></div><button onclick="$('masterQrModal').classList.add('hidden')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 rounded-lg">Close</button></div></div>
+    
+    <div id="configModal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Field Settings</h3>
+            <div class="space-y-4">
+                <div><label class="text-xs font-bold text-gray-500">Label</label><input type="text" id="fieldName" class="w-full p-2 border rounded"></div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500">Type</label>
+                    <select id="fieldType" class="w-full p-2 border rounded" onchange="toggleFieldOptions()">
+                        <option value="string">Text</option>
+                        <option value="number">Number</option>
+                        <option value="age">Age (Number)</option>
+                        <option value="checkbox">Checkbox</option>
+                        <option value="seat">Seat</option>
+                        <option value="gate">Gate</option>
+                        <option value="sequence">Sequence</option>
+                        <option value="date">Date / Time</option>
+                        <option value="code">QR Code</option>
+                        <option value="heading">Heading</option>
+                    </select>
+                </div>
+                
+                <!-- Hidden Toggle -->
+                <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <input type="checkbox" id="fieldHidden" class="w-4 w-4 rounded text-blue-600 focus:ring-blue-500">
+                    <div>
+                        <label for="fieldHidden" class="text-sm font-bold text-gray-700 block">Hidden (Metadata)</label>
+                        <p class="text-[10px] text-gray-500 leading-tight">Data is saved in QR but not printed on ticket.</p>
+                    </div>
+                </div>
+
+                <!-- Specific Options Panels -->
+                <div id="dateSettings" class="hidden"><select id="dateMode" class="w-full p-2 border rounded"><option value="date">Date Only</option><option value="time">Time Only</option><option value="datetime">Both</option></select></div>
+                <div id="headingSettings" class="hidden">
+                    <input type="text" id="headingText" class="w-full p-2 border rounded mb-2">
+                    <div class="grid grid-cols-3 gap-2"><input type="number" id="headingSize" class="border rounded p-1"><input type="color" id="headingColor" class="h-8"><select id="headingWeight" class="border rounded"><option value="400">Normal</option><option value="700">Bold</option></select></div>
+                </div>
+                <div id="qrSettings" class="hidden"><input type="range" id="qrSize" min="50" max="450" class="w-full"><div id="qrSizeVal" class="text-right text-xs">200px</div></div>
+            </div>
+            <div class="mt-8 flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-2 text-gray-600 bg-gray-100 rounded-lg">Cancel</button>
+                <button id="saveButton" class="flex-1 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+            </div>
+            <button id="deleteButton" class="w-full mt-4 text-xs text-red-500 hidden">Remove</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONSTANTS & STATE ---
+        const CANVAS_WIDTH = 320; // New Width
+        const CANVAS_HEIGHT = 450; // New Height
+        const SNAP_THRESHOLD = 5; 
+        const GAP_THRESHOLD = 3; 
+        const TEMPLATE_STORAGE_KEY = 'ticket_templates_v7';
+        const SEQUENCE_STORAGE_KEY = 'ticket_sequences_v7';
+        const USED_TICKETS_PREFIX = 'used_tickets_';
+
+        let encryptionKey = null; 
+        let loadedTemplateName = null;
+        let loadedTemplateConfig = null;
+        let loadedColors = null;
+        let lockedFields = {};
+        
+        let salesSession = [];
+        let isSessionActive = false;
+
+        let verifierKey = null;
+        let verifierConfig = null;
+        let verifierColors = null;
+        let scanMode = null; 
+        let videoStream = null;
+        let fields = [];
+        let currentColors = { outline: '#FFFFFF', outlineWidth: 2, label: '#9CA3AF', value: '#FFFFFF' };
+        let isDragging = false, dragTarget = null, dragOffset = { x: 0, y: 0 }, editingId = null;
+        let snapCandidates = [];
+
+        const $ = id => document.getElementById(id);
+
+        // --- UTILS ---
+        function showToast(msg, type = 'error', position = 'center') {
+            const el = $('toast');
+            let posClasses = "left-1/2 -translate-x-1/2"; 
+            if(position === 'top-right') posClasses = "right-4 translate-x-0";
+            el.className = `fixed top-4 ${posClasses} z-[80] px-6 py-3 rounded-full shadow-xl font-bold text-white transition-all duration-300 transform scale-90 opacity-0 pointer-events-none ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+            el.innerText = msg;
+            void el.offsetWidth;
+            el.classList.remove('hidden', 'scale-90', 'opacity-0', 'pointer-events-none');
+            el.classList.add('scale-100', 'opacity-100');
+            if(el.timeoutId) clearTimeout(el.timeoutId);
+            el.timeoutId = setTimeout(() => {
+                el.classList.remove('scale-100', 'opacity-100');
+                el.classList.add('scale-90', 'opacity-0');
+                setTimeout(() => el.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        // --- THEMES & STYLES ---
+        const themes = {
+            standard: { outline: '#3b82f6', outlineWidth: 2, label: '#9CA3AF', value: '#FFFFFF' },
+            cyber: { outline: '#22c55e', outlineWidth: 4, label: '#86efac', value: '#FFFFFF' },
+            gold: { outline: '#eab308', outlineWidth: 2, label: '#fde047', value: '#FFFFFF' },
+            stark: { outline: '#ffffff', outlineWidth: 1, label: '#94a3b8', value: '#f8fafc' }
+        };
+
+        function applyTheme(key) {
+            const t = themes[key];
+            if(!t) return;
+            $('outlineColor').value = t.outline;
+            $('outlineWidth').value = t.outlineWidth;
+            $('labelColor').value = t.label;
+            $('valueColor').value = t.value;
+            updateColors();
+        }
+
+        function handleBgUpload(input, targetId) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const el = $(targetId);
+                    el.style.backgroundImage = `url(${e.target.result})`;
+                    el.classList.remove('editor-grid');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        function updateColors() {
+            currentColors = { outline: $('outlineColor').value, outlineWidth: $('outlineWidth').value, label: $('labelColor').value, value: $('valueColor').value };
+            $('borderWidthDisplay').innerText = currentColors.outlineWidth + 'px';
+            renderEditor();
+        }
+
+        // --- INIT ---
+        window.onload = () => {
+            // Set canvas size dynamically in the editor
+            $('passCanvas').style.width = CANVAS_WIDTH + 'px';
+            $('passCanvas').style.height = CANVAS_HEIGHT + 'px';
+
+            initPalette();
+            // Default fields for Apple Wallet style (vertical layout)
+            addField('EVENT PASS', 'heading', 20, 20, {text:'EVENT PASS', fontSize:20, headingColor:'#FFFFFF'});
+            addField('Passenger', 'string', 20, 60);
+            addField('Date', 'date', 20, 100, {dateMode:'datetime'});
+            addField('Age', 'age', 20, 150);
+            addField('Seat', 'seat', 150, 150);
+            addField('VIP Access', 'checkbox', 20, 190);
+            addField('Internal ID', 'string', 20, 390, { hidden: true }); // Hidden near bottom
+            addField('Secure Code', 'code', 70, 260, {qrSize: 180}); // Centered 
+            
+            renderEditor();
+            showTab('editor');
+            updateColors();
+        };
+
+        // --- DRAG & DROP ENGINE ---
+        function handleDragStart(e) {
+            if(e.button !== 0) return; e.stopPropagation();
+            dragTarget = e.currentTarget; isDragging = true;
+            dragTarget.classList.add('dragging');
+            const rect = dragTarget.getBoundingClientRect();
+            dragOffset = { x: e.clientX - rect.left - 4, y: e.clientY - rect.top - 4 }; // Adjusted for padding
+            snapCandidates = [];
+            // Update canvas center coordinates
+            snapCandidates.push({ type: 'canvas-center', cx: CANVAS_WIDTH / 2, cy: CANVAS_HEIGHT / 2 });
+            fields.forEach(f => {
+                if (f.id != dragTarget.dataset.id) {
+                    const el = document.querySelector(`.draggable-field[data-id="${f.id}"]`);
+                    if(el) {
+                        const r = el.getBoundingClientRect();
+                        snapCandidates.push({ type: 'field', x: f.x, y: f.y, w: r.width, h: r.height, r: f.x + r.width, b: f.y + r.height, cx: f.x + r.width/2, cy: f.y + r.height/2 });
+                    }
+                }
+            });
+            document.addEventListener('mousemove', handleDragMove); document.addEventListener('mouseup', handleDragEnd);
+        }
+
+        function handleDragMove(e) {
+            if(!isDragging || !dragTarget) return;
+            const container = $('passCanvas');
+            const bounds = container.getBoundingClientRect();
+            const guidesContainer = $('snapGuidesContainer');
+            // Calculate raw position relative to canvas (minus padding/offset)
+            let rawX = e.clientX - bounds.left - dragOffset.x;
+            let rawY = e.clientY - bounds.top - dragOffset.y;
+
+            // Get the size of the *content* area of the element (excluding the 4px padding/border)
+            const w = dragTarget.offsetWidth;
+            const h = dragTarget.offsetHeight;
+            
+            if (e.shiftKey) {
+                // Update canvas boundaries
+                rawX = Math.max(0, Math.min(rawX, CANVAS_WIDTH - w));
+                rawY = Math.max(0, Math.min(rawY, CANVAS_HEIGHT - h));
+                dragTarget.style.left = rawX + 'px';
+                dragTarget.style.top = rawY + 'px';
+                guidesContainer.innerHTML = '';
+                return;
+            }
+            let finalX = rawX, finalY = rawY;
+            let guides = [];
+            let snappedX = false, snappedY = false;
+            const cx = rawX + w/2;
+            const cy = rawY + h/2;
+
+            // Snap to horizontal center
+            if (Math.abs(cx - CANVAS_WIDTH / 2) < SNAP_THRESHOLD) { finalX = CANVAS_WIDTH / 2 - w/2; snappedX = true; guides.push(`<div class="snap-guide vertical" style="left:${CANVAS_WIDTH / 2}px"></div>`); }
+            
+            if(!snappedX) {
+                for(let c of snapCandidates) {
+                    if(c.type === 'field') {
+                        if(Math.abs(rawX - c.x) < SNAP_THRESHOLD) { finalX = c.x; snappedX = true; guides.push(`<div class="snap-guide vertical" style="left:${c.x}px"></div>`); break; }
+                        if(Math.abs(cx - c.cx) < SNAP_THRESHOLD) { finalX = c.cx - w/2; snappedX = true; guides.push(`<div class="snap-guide vertical" style="left:${c.cx}px"></div>`); break; }
+                        if(Math.abs((rawX+w) - c.r) < SNAP_THRESHOLD) { finalX = c.r - w; snappedX = true; guides.push(`<div class="snap-guide vertical" style="left:${c.r}px"></div>`); break; }
+                    }
+                }
+            }
+            
+            // Snap to vertical center
+            if (Math.abs(cy - CANVAS_HEIGHT / 2) < SNAP_THRESHOLD) { finalY = CANVAS_HEIGHT / 2 - h/2; snappedY = true; guides.push(`<div class="snap-guide horizontal" style="top:${CANVAS_HEIGHT / 2}px"></div>`); }
+            
+            if(!snappedY) {
+                for(let c of snapCandidates) {
+                    if(c.type === 'field') {
+                        if(Math.abs(rawY - c.y) < SNAP_THRESHOLD) { finalY = c.y; snappedY = true; guides.push(`<div class="snap-guide horizontal" style="top:${c.y}px"></div>`); break; }
+                        if(Math.abs(cy - c.cy) < SNAP_THRESHOLD) { finalY = c.cy - h/2; snappedY = true; guides.push(`<div class="snap-guide horizontal" style="top:${c.cy}px"></div>`); break; }
+                        if(Math.abs((rawY+h) - c.b) < SNAP_THRESHOLD) { finalY = c.b - h; snappedY = true; guides.push(`<div class="snap-guide horizontal" style="top:${c.b}px"></div>`); break; }
+                    }
+                }
+            }
+
+            if(!snappedX) {
+                for(let i=0; i<snapCandidates.length; i++) {
+                    for(let j=i+1; j<snapCandidates.length; j++) {
+                        const a = snapCandidates[i];
+                        const b = snapCandidates[j];
+                        if(a.type !== 'field' || b.type !== 'field') continue;
+                        let leftObj = a.cx < rawX ? a : b;
+                        let rightObj = a.cx < rawX ? b : a;
+                        if(leftObj.cx > rightObj.cx) { const t=leftObj; leftObj=rightObj; rightObj=t; }
+                        if(rawX > leftObj.r && (rawX+w) < rightObj.x) {
+                           const gapL = rawX - leftObj.r;
+                           const gapR = rightObj.x - (rawX + w);
+                           if(Math.abs(gapL - gapR) < GAP_THRESHOLD) {
+                               const totalSpace = rightObj.x - leftObj.r;
+                               const midPoint = leftObj.r + (totalSpace/2) - (w/2);
+                               finalX = midPoint;
+                               snappedX = true;
+                               const yPos = (Math.min(leftObj.cy, rightObj.cy, cy) + Math.max(leftObj.cy, rightObj.cy, cy))/2;
+                               guides.push(`<div class="gap-guide" style="left:${leftObj.r}px; width:${gapL}px; top:${yPos}px"></div>`);
+                               guides.push(`<div class="gap-guide" style="left:${midPoint+w}px; width:${gapL}px; top:${yPos}px"></div>`);
+                               break;
+                           }
+                        }
+                    }
+                    if(snappedX) break;
+                }
+            }
+            finalX = Math.max(0, Math.min(finalX, CANVAS_WIDTH - w));
+            finalY = Math.max(0, Math.min(finalY, CANVAS_HEIGHT - h));
+            dragTarget.style.left = finalX + 'px';
+            dragTarget.style.top = finalY + 'px';
+            guidesContainer.innerHTML = guides.join('');
+        }
+
+        function handleDragEnd() {
+            if(!isDragging) return;
+            const f = fields.find(i => i.id == dragTarget.dataset.id);
+            // We save the style position (which includes the 4px padding/border offset)
+            f.x = parseFloat(dragTarget.style.left);
+            f.y = parseFloat(dragTarget.style.top);
+            isDragging = false; 
+            dragTarget.classList.remove('dragging');
+            $('snapGuidesContainer').innerHTML = '';
+            document.removeEventListener('mousemove', handleDragMove); document.removeEventListener('mouseup', handleDragEnd);
+        }
+
+        // --- EDITOR BASICS ---
+        $('passCanvas').addEventListener('dragover', e => e.preventDefault());
+        $('passCanvas').addEventListener('drop', e => {
+            e.preventDefault();
+            const type = e.dataTransfer.getData('type');
+            if(!type) return;
+            const rect = $('passCanvas').getBoundingClientRect();
+            // Adjusted snap-to-grid drop calculation for new dimensions
+            let x = Math.round((e.clientX - rect.left - 30)/10)*10;
+            let y = Math.round((e.clientY - rect.top - 15)/10)*10;
+            if(type === 'code' && fields.some(f=>f.type==='code')) return showToast("Only 1 QR Code allowed");
+            addField(type.toUpperCase(), type, x, y, {}, true);
+        });
+
+        function addField(name, type, x, y, opts = {}, edit = false) {
+            const defs = { qrSize: 200, dateMode: 'date', text: 'HEADING', headingColor:'#FFF', fontSize:24, fontWeight:'700', hidden: false };
+            const uid = Date.now() + Math.random(); 
+            const f = { id: uid, name, type, x, y, ...defs, ...opts };
+            fields.push(f); renderEditor(); if(edit) openModal(f.id);
+        }
+
+        function initPalette() {
+            const types = [
+                { id: 'string', icon: 'Aa', label: 'Text' }, { id: 'number', icon: '#', label: 'Number' },
+                { id: 'age', icon: '🎂', label: 'Age' }, { id: 'seat', icon: '💺', label: 'Seat' },
+                { id: 'checkbox', icon: '☑', label: 'Check' },
+                { id: 'gate', icon: '🚪', label: 'Gate' }, { id: 'sequence', icon: '1..N', label: 'Seq #' },
+                { id: 'date', icon: '📅', label: 'Date' }, { id: 'code', icon: '⬛', label: 'QR' },
+                { id: 'heading', icon: 'H', label: 'Title' }
+            ];
+            $('fieldPalette').innerHTML = types.map(t => `
+                <div draggable="true" data-type="${t.id}" class="flex items-center gap-3 p-3 bg-gray-50 hover:bg-white border border-transparent hover:border-blue-200 rounded-lg cursor-grab transition-all shadow-sm flex-shrink-0">
+                    <span class="w-8 w-8 flex items-center justify-center bg-white rounded-md border border-gray-200 text-sm font-mono flex-shrink-0">${t.icon}</span>
+                    <span class="text-sm font-medium text-gray-700">${t.label}</span>
+                </div>
+            `).join('');
+            $('fieldPalette').querySelectorAll('[draggable]').forEach(el => {
+                el.addEventListener('dragstart', e => { e.dataTransfer.setData('type', el.dataset.type); });
+            });
+        }
+        function renderEditor() {
+            Array.from($('passCanvas').children).forEach(c => { 
+                if(!c.classList.contains('snap-guide') && !c.classList.contains('gap-guide') && c.id !== 'snapGuidesContainer') c.remove(); 
+            });
+            $('passCanvas').style.borderColor = currentColors.outline;
+            $('passCanvas').style.borderWidth = (currentColors.outlineWidth || 2) + 'px';
+            $('passCanvas').style.borderStyle = 'dashed'; 
+
+            fields.forEach(f => {
+                const el = document.createElement('div');
+                el.className = 'draggable-field'; el.dataset.id = f.id;
+                el.style.left = f.x + 'px'; el.style.top = f.y + 'px';
+                
+                // Visual style for hidden fields in editor
+                if(f.hidden) {
+                    el.classList.add('opacity-60', 'grayscale');
+                    el.style.border = "1px dashed #999";
+                }
+
+                if(f.type === 'heading') {
+                    el.innerHTML = `<div class="pass-heading" style="color:${f.headingColor}; font-size:${f.fontSize}px; font-weight:${f.fontWeight}">${f.text}${f.hidden ? ' 👁️‍🗨️' : ''}</div>`;
+                } else if (f.type === 'code') {
+                    const s = f.qrSize || 100;
+                    el.innerHTML = `<div class="qr-code-container" style="width:${s}px; height:${s}px;"></div>`;
+                    // Use HIGH correction level for reliability in preview
+                    setTimeout(() => new QRCode(el.querySelector('div'), { text: "PREVIEW", width: s-10, height: s-10, correctLevel: QRCode.CorrectLevel.H }), 0);
+                } else {
+                    let val = "DATA"; 
+                    if(f.type === 'age') val = "25"; if(f.type === 'seat') val = "12A"; if(f.type === 'gate') val = "B2"; if(f.type === 'checkbox') val = "☑";
+                    let labelText = f.name;
+                    if(f.hidden) labelText += " 👁️‍🗨️";
+                    el.innerHTML = `<div class="pass-label" style="color:${currentColors.label}">${labelText}</div><div class="pass-value" style="color:${currentColors.value}">${val}</div>`;
+                }
+                el.addEventListener('mousedown', handleDragStart);
+                el.addEventListener('dblclick', () => openModal(f.id));
+                $('passCanvas').appendChild(el);
+            });
+            $('fieldCount').innerText = `${fields.length} Fields`;
+        }
+
+        function triggerClearModal() { $('confirmModal').classList.remove('hidden'); }
+        function performClear() { fields = []; renderEditor(); $('confirmModal').classList.add('hidden'); showToast("Workspace cleared", "success"); }
+
+        // --- EDITOR: MODAL ---
+        function toggleFieldOptions() {
+            const t = $('fieldType').value;
+            ['qrSettings','dateSettings','headingSettings'].forEach(id => $(id).classList.add('hidden'));
+            if(t === 'code') $('qrSettings').classList.remove('hidden');
+            if(t === 'date') $('dateSettings').classList.remove('hidden');
+            if(t === 'heading') $('headingSettings').classList.remove('hidden');
+        }
+        function openModal(id) {
+            editingId = id; const f = fields.find(i => i.id === id);
+            $('fieldName').value = f.name; $('fieldType').value = f.type;
+            $('fieldHidden').checked = f.hidden || false;
+            if(f.type === 'code') { $('qrSize').value = f.qrSize; $('qrSizeVal').innerText = f.qrSize+'px'; }
+            if(f.type === 'date') $('dateMode').value = f.dateMode;
+            if(f.type === 'heading') { $('headingText').value = f.text; $('headingSize').value = f.fontSize; $('headingColor').value = f.headingColor; $('headingWeight').value = f.fontWeight; }
+            toggleFieldOptions(); $('deleteButton').classList.remove('hidden');
+            $('deleteButton').onclick = () => { fields = fields.filter(i => i.id !== editingId); renderEditor(); closeModal(); };
+            $('configModal').classList.remove('hidden');
+        }
+        function closeModal() { $('configModal').classList.add('hidden'); editingId = null; }
+        $('saveButton').onclick = () => {
+            const f = fields.find(i => i.id === editingId);
+            f.name = $('fieldName').value; f.type = $('fieldType').value;
+            f.hidden = $('fieldHidden').checked;
+            if(f.type === 'code') f.qrSize = parseInt($('qrSize').value);
+            if(f.type === 'date') f.dateMode = $('dateMode').value;
+            if(f.type === 'heading') { f.text = $('headingText').value; f.fontSize = $('headingSize').value; f.headingColor = $('headingColor').value; f.fontWeight = $('headingWeight').value; }
+            renderEditor(); closeModal();
+        };
+
+        // --- CRYPTO & STORAGE ---
+        async function getKey(p) { const e = new TextEncoder(); const k = await crypto.subtle.importKey("raw", e.encode(p), {name:"PBKDF2"}, false, ["deriveKey"]); return crypto.subtle.deriveKey({name:"PBKDF2", salt: e.encode("SaltV7"), iterations:100000, hash:"SHA-256"}, k, {name:"AES-GCM", length:256}, true, ["encrypt","decrypt"]); }
+        async function encrypt(d, p) { const k = await getKey(p); const iv = crypto.getRandomValues(new Uint8Array(12)); const c = await crypto.subtle.encrypt({name:"AES-GCM", iv}, k, new TextEncoder().encode(d)); const b = new Uint8Array(iv.byteLength+c.byteLength); b.set(iv,0); b.set(new Uint8Array(c),12); return btoa(String.fromCharCode(...b)); }
+        async function decrypt(b64, p) { const k = await getKey(p); const s = atob(b64); const b = new Uint8Array(s.length); for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i); const dec = await crypto.subtle.decrypt({name:"AES-GCM", iv:b.slice(0,12)}, k, b.slice(12)); return new TextDecoder().decode(dec); }
+
+        async function saveTemplate() {
+            const name = $('templateNameSave').value.toUpperCase();
+            if(!name || !fields.length) return showToast("Missing Name or Fields");
+            encryptionKey = crypto.randomUUID(); 
+            const hash = await encrypt("TEST", encryptionKey);
+            const data = { config: fields, colors: currentColors, verifyHash: hash };
+            const store = JSON.parse(localStorage.getItem(TEMPLATE_STORAGE_KEY) || '{}');
+            store[name] = JSON.stringify(data);
+            localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(store));
+            $('keyToSave').innerText = encryptionKey;
+            $('savedKeyOutput').classList.remove('hidden');
+            $('showMasterQrBtn').classList.remove('hidden');
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        function showMasterQR() {
+            const name = $('templateNameSave').value.toUpperCase();
+            if(!encryptionKey) return showToast("Save template first");
+            const miniFields = fields.map(f => {
+                const o = { n: f.name, t: f.type, x: f.x, y: f.y };
+                if(f.hidden) o.h = 1; // 1 for hidden
+                if(f.type === 'code') o.s = f.qrSize; if(f.type === 'date') o.dm = f.dateMode; if(f.type === 'heading') { o.ht = f.text; o.fs = f.fontSize; o.hc = f.headingColor; o.fw = f.fontWeight; }
+                return o;
+            });
+            const miniColors = { o: currentColors.outline, ow: currentColors.outlineWidth, l: currentColors.label, v: currentColors.value };
+            const payload = `SETUP|${JSON.stringify({ n: name, k: encryptionKey, f: miniFields, c: miniColors })}`;
+            $('masterQrTarget').innerHTML = "";
+            // Using HIGH correction level for Setup QR
+            new QRCode($('masterQrTarget'), { text: payload, width: 300, height: 300, correctLevel: QRCode.CorrectLevel.H });
+            $('masterQrModal').classList.remove('hidden');
+        }
+
+        async function loadAndAuthenticateTemplate() {
+            const name = $('templateNameLoad').value.toUpperCase(); const key = $('encryptionKeyLoad').value.trim();
+            try {
+                const store = JSON.parse(localStorage.getItem(TEMPLATE_STORAGE_KEY) || '{}');
+                if(!store[name]) throw new Error("Template not found");
+                const data = JSON.parse(store[name]);
+                await decrypt(data.verifyHash, key);
+                encryptionKey = key; loadedTemplateName = name; loadedTemplateConfig = data.config; loadedColors = data.colors;
+                $('authStatus').innerText = "✅ Loaded"; $('authStatus').classList.remove('hidden');
+                $('creation-section').classList.remove('opacity-50','pointer-events-none');
+                $('keyStatusDot').className = "w-2 w-2 rounded-full bg-green-500 mr-2"; $('secretKeyDisplay').innerText = "KEY LOADED";
+                renderInputForm();
+            } catch(e) { showToast("Load Failed: " + e.message); }
+        }
+
+        // --- GENERATOR LOGIC ---
+        function renderInputForm() {
+            $('dynamicInputForm').innerHTML = loadedTemplateConfig.filter(f => !['code','heading'].includes(f.type)).map(f => {
+                const disabled = f.type === 'sequence' ? 'disabled bg-gray-100' : 'bg-gray-50';
+                const type = f.type === 'number' || f.type === 'age' ? 'number' : f.type === 'date' ? 'datetime-local' : (f.type === 'checkbox' ? 'checkbox' : 'text');
+                let displayLabel = f.name;
+                if(f.hidden) displayLabel += " (Hidden)";
+                
+                if (type === 'checkbox') return `<div class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"><input type="checkbox" data-name="${f.name}" data-type="${f.type}" class="w-5 w-5 ticket-input"><label class="text-sm font-bold text-gray-700">${displayLabel}</label><button class="lock-btn ml-auto text-lg" onclick="toggleLock(this, '${f.name}')">🔓</button></div>`;
+                return `<div class="relative"><label class="block text-xs font-bold text-gray-500 uppercase mb-1">${displayLabel}</label><div class="flex gap-2"><input type="${type}" data-name="${f.name}" data-type="${f.type}" class="w-full p-3 border rounded-lg ticket-input ${disabled}" ${disabled} placeholder="${f.name}">${f.type !== 'sequence' ? `<button class="lock-btn text-xl px-2" onclick="toggleLock(this, '${f.name}')">🔓</button>` : ''}</div></div>`;
+            }).join('');
+        }
+        function toggleLock(btn, fieldName) { if(lockedFields[fieldName]) { delete lockedFields[fieldName]; btn.classList.remove('locked'); btn.innerHTML = '🔓'; } else { lockedFields[fieldName] = true; btn.classList.add('locked'); btn.innerHTML = '🔒'; } }
+        
+        async function generateTicket() {
+            const inputs = document.querySelectorAll('.ticket-input'); 
+            let hasError = false;
+
+            // Reset previous validation errors
+            inputs.forEach(i => {
+                i.classList.remove('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
+            });
+
+            // Validate fields
+            for(const i of inputs) {
+                // Skip validation for sequences (auto-filled) and checkboxes
+                if(i.dataset.type === 'sequence' || i.type === 'checkbox') continue;
+                
+                if(!i.value.trim()) {
+                    i.classList.add('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200');
+                    hasError = true;
+                }
+            }
+
+            if(hasError) {
+                showToast("⚠️ Please fill out all required fields", "error", "top-right");
+                return;
+            }
+
+            const data = { _id: crypto.randomUUID().split('-').join('').substring(0, 12) };
+            for(const i of inputs) {
+                if(i.dataset.type === 'sequence') {
+                    const k = `${loadedTemplateName}_${i.dataset.name}`;
+                    const seqStore = JSON.parse(localStorage.getItem(SEQUENCE_STORAGE_KEY) || '{}');
+                    const next = (seqStore[k] || 0) + 1;
+                    seqStore[k] = next; localStorage.setItem(SEQUENCE_STORAGE_KEY, JSON.stringify(seqStore));
+                    data[i.dataset.name] = "#" + String(next).padStart(4,'0');
+                } else if (i.type === 'checkbox') data[i.dataset.name] = i.checked;
+                else data[i.dataset.name] = i.value;
+            }
+            const blob = await encrypt(JSON.stringify(data), encryptionKey);
+            const finalPayload = `${loadedTemplateName}|${blob}`;
+
+            // DEFENSIVE CHECK: Ensure the generated ticket payload isn't corrupted
+            if (finalPayload.startsWith("SETUP|")) {
+                showToast("CRITICAL ERROR: Generated ticket corrupted with SETUP prefix.", "error");
+                return;
+            }
+            
+            const qrOnly = $('genQrOnly').checked;
+            renderFinalTicket(data, finalPayload, qrOnly); 
+            $('downloadPdfBtn').disabled = false;
+            
+            // --- SALES SESSION LOGIC ---
+            if(isSessionActive) {
+                salesSession.push({
+                    ticketId: data._id,
+                    generatedAt: new Date().toISOString(),
+                    details: data
+                });
+                updateSessionUI();
+            }
+
+            for(const i of inputs) { if(i.dataset.type !== 'sequence' && !lockedFields[i.dataset.name]) { if(i.type === 'checkbox') i.checked = false; else i.value = ''; } }
+            showToast("Ticket Generated!", "success");
+        }
+
+        // --- SALES SESSION FUNCTIONS ---
+        function toggleSession() {
+            const btn = $('btnToggleSession');
+            if(!isSessionActive) {
+                salesSession = [];
+                isSessionActive = true;
+                btn.innerText = "Stop Session & Clear";
+                btn.className = "bg-white border border-red-300 text-red-600 font-bold py-2 rounded-lg hover:bg-red-50 text-xs transition-colors";
+                $('btnDownloadSession').disabled = false;
+                updateSessionUI();
+                showToast("Sales Session Started", "success");
+            } else {
+                if(confirm("End session? All unsaved session data will be cleared.")) {
+                    isSessionActive = false;
+                    salesSession = [];
+                    btn.innerText = "Start Session";
+                    btn.className = "bg-white border border-blue-300 text-blue-700 font-bold py-2 rounded-lg hover:bg-blue-50 text-xs transition-colors";
+                    $('btnDownloadSession').disabled = true;
+                    updateSessionUI();
+                    showToast("Session Ended", "success");
+                }
+            }
+        }
+
+        function updateSessionUI() {
+            $('sessionCount').innerText = salesSession.length;
+            $('btnDownloadSession').disabled = salesSession.length === 0;
+        }
+
+        function downloadSessionReport() {
+            if(salesSession.length === 0) return showToast("No tickets in session");
+            const blob = new Blob([JSON.stringify(salesSession, null, 2)], {type : 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Sales_Session_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function renderFinalTicket(data, qrPayload, qrOnly = false) {
+            const c = $('boardingPassContainer'); 
+            c.innerHTML = ''; 
+            
+            // Set canvas size dynamically in the generator preview
+            c.style.width = CANVAS_WIDTH + 'px';
+            c.style.height = CANVAS_HEIGHT + 'px';
+
+            if (qrOnly) {
+                c.style.background = '#FFFFFF';
+                c.style.borderColor = '#E5E7EB';
+                c.style.borderWidth = '1px';
+                c.style.borderStyle = 'solid';
+            } else {
+                // Restore styling from loaded config
+                c.style.borderColor = loadedColors.outline; 
+                c.style.borderWidth = loadedColors.outlineWidth + 'px'; 
+                c.style.borderStyle = 'solid';
+                // Note: Background image persistence is handled by the container DIV state, which persists unless cleared.
+            }
+
+            loadedTemplateConfig.forEach(f => {
+                if(f.hidden) return; // Skip hidden fields
+                if(qrOnly && f.type !== 'code') return; // Skip everything else in QR Only mode
+
+                // Create Wrapper (matches .draggable-field in editor)
+                const el = document.createElement('div'); 
+                el.style.position = 'absolute'; 
+                el.style.boxSizing = 'content-box'; // Explicitly match standard box model
+                el.style.padding = '4px';
+
+                if (qrOnly && f.type === 'code') {
+                    // Explicit Math Centering for reliable export
+                    const contentWidth = f.qrSize;
+                    const padding = 8; // 4px left + 4px right padding
+                    const totalWidth = contentWidth + padding;
+                    
+                    // Canvas is CANVAS_WIDTH x CANVAS_HEIGHT
+                    const leftPos = (CANVAS_WIDTH - totalWidth) / 2;
+                    const topPos = (CANVAS_HEIGHT - totalWidth) / 2;
+
+                    el.style.left = leftPos + 'px';
+                    el.style.top = topPos + 'px';
+                } else {
+                    el.style.left = f.x+'px'; 
+                    el.style.top = f.y+'px';
+                }
+                
+                if(f.type === 'heading') {
+                    el.innerHTML = `<div class="pass-heading" style="color:${f.headingColor}; font-size:${f.fontSize}px; font-weight:${f.fontWeight}">${f.text}</div>`;
+                }
+                else if(f.type === 'code') { 
+                    // Create Inner Container (matches .qr-code-container in editor)
+                    const d = document.createElement('div'); 
+                    d.style.width = f.qrSize + 'px';
+                    d.style.height = f.qrSize + 'px';
+                    d.className = "bg-white rounded-md flex justify-center items-center generated-qr"; // Added class for CSS targeting
+                    
+                    // DEFENSIVE FIX: Clear inner HTML before generating new code
+                    d.innerHTML = '';
+
+                    if(qrPayload) { 
+                        // Generate QR Code
+                        // QR Size is -10 to provide internal whitespace padding
+                        new QRCode(d, { 
+                            text: qrPayload, 
+                            width: f.qrSize - 10, 
+                            height: f.qrSize - 10, 
+                            correctLevel: QRCode.CorrectLevel.H // Set to HIGH for reliability
+                        }); 
+                    } else { 
+                        // Placeholder state
+                        d.className = "border border-dashed border-white/30 rounded flex items-center justify-center text-xs text-white/50"; 
+                        d.style.width = f.qrSize + 'px';
+                        d.style.height = f.qrSize + 'px';
+                        d.innerText = "QR"; 
+                    } 
+                    el.appendChild(d);
+                }
+                else { 
+                    let val = data ? data[f.name] : '---'; 
+                    if(f.type === 'date' && val !== '---') { 
+                        const d = new Date(val); 
+                        if(f.dateMode === 'date') val = d.toLocaleDateString(); 
+                        else if(f.dateMode === 'time') val = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); 
+                        else val = d.toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); 
+                    } 
+                    if(f.type === 'checkbox') val = val === true ? '☑' : '☐'; 
+                    el.innerHTML = `<div class="pass-label" style="color:${loadedColors.label}">${f.name}</div><div class="pass-value" style="color:${loadedColors.value}">${val}</div>`; 
+                }
+                c.appendChild(el);
+            });
+        }
+        async function downloadPdf() {
+            const { jsPDF } = window.jspdf; const el = $('boardingPassContainer'); if(el.children.length === 0) return showToast("Please generate a ticket first.");
+            const origScale = el.style.transform; el.style.transform = 'scale(1)'; el.style.boxShadow = 'none';
+            // Use CANVAS_WIDTH and CANVAS_HEIGHT for PDF dimensions
+            const cvs = await html2canvas(el, { scale: 3, backgroundColor: $('genQrOnly').checked ? '#ffffff' : '#1f2937' }); el.style.transform = origScale; el.style.boxShadow = '';
+            const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: [CANVAS_WIDTH, CANVAS_HEIGHT] }); 
+            pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); 
+            pdf.save('Wallet_Pass.pdf');
+        }
+
+        // --- SCANNER/VERIFY ---
+        function startScanner(mode) { 
+            if(videoStream) stopScanner(); // Ensure any previous stream is stopped
+            
+            scanMode = mode; 
+            $('scannerModal').classList.remove('hidden'); 
+            $('scanFeedback').innerText = ""; 
+            $('verifyResultContainer').classList.add('hidden'); 
+            
+            if (mode === 'SETUP') { $('scannerTitle').innerText = "Scan Setup QR"; $('scannerSub').innerText = "Look for the Setup QR in the Designer"; } 
+            else { if(!verifierKey) { stopScanner(); return showToast("Please scan a Setup QR first!"); } $('scannerTitle').innerText = "Scan Ticket"; $('scannerSub').innerText = "Position ticket code in the box"; }
+            
+            // Requesting high resolution camera feed for better QR detection
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } }).then(stream => { 
+                videoStream = stream; 
+                $('scannerVideo').srcObject = stream; 
+                $('scannerVideo').setAttribute("playsinline", true); 
+                $('scannerVideo').play(); 
+                requestAnimationFrame(scanTick); 
+            }).catch(err => { 
+                showToast("Camera Error: " + err.message, 'error', 'center'); 
+                stopScanner(); 
+            });
+        }
+        
+        function stopScanner() { 
+            if(videoStream) {
+                // Explicitly stop all tracks to release the camera hardware
+                videoStream.getTracks().forEach(t => t.stop());
+                videoStream = null; // Clear the reference
+            }
+            $('scannerVideo').srcObject = null; 
+            $('scannerModal').classList.add('hidden'); 
+            scanMode = null; 
+        }
+
+        function scanTick() { 
+            const v = $('scannerVideo');
+            // Check if the video element has loaded metadata (including dimensions)
+            if(!scanMode || !v.videoWidth || v.readyState < 2) {
+                return requestAnimationFrame(scanTick); 
+            }
+            
+            const c = $('scannerCanvas'); 
+            const ctx = c.getContext("2d"); 
+            
+            // --- CORE FIX: Intelligent Cropping to focus jsQR on the center ---
+            
+            // 1. Determine the largest square area within the video feed
+            const minDim = Math.min(v.videoWidth, v.videoHeight);
+            const cropX = (v.videoWidth - minDim) / 2;
+            const cropY = (v.videoHeight - minDim) / 2;
+
+            // 2. Use a fixed, large canvas size for processing to ensure high-resolution input for jsQR
+            const PROCESS_SIZE = 512;
+            c.width = PROCESS_SIZE;
+            c.height = PROCESS_SIZE;
+            
+            // 3. Draw the cropped square area from the video onto the processing canvas
+            // Parameters: drawImage(video, cropX, cropY, cropWidth, cropHeight, canvasX, canvasY, canvasWidth, canvasHeight)
+            ctx.drawImage(v, cropX, cropY, minDim, minDim, 0, 0, PROCESS_SIZE, PROCESS_SIZE);
+
+            const id = ctx.getImageData(0, 0, PROCESS_SIZE, PROCESS_SIZE); 
+            
+            // Perform QR code detection
+            const cd = jsQR(id.data, id.width, id.height, { inversionAttempts: "dontInvert" }); 
+            
+            if(cd && cd.data) handleScan(cd.data); 
+            else requestAnimationFrame(scanTick); 
+        }
+        
+        async function handleScan(p) {
+            // A long, encrypted payload should be well over 100 characters minimum
+            if(p.length < 100 && !p.startsWith("SETUP|")) { 
+                $('scanFeedback').innerText = "⚠️ Incomplete scan. Move closer/align better.";
+                $('scanFeedback').className = "mt-4 text-yellow-500 font-bold h-6";
+                return;
+            }
+
+            if(scanMode === 'SETUP') {
+                if(!p.startsWith("SETUP|")) {
+                    $('scanFeedback').innerText = "❌ Not a Setup QR";
+                    $('scanFeedback').className = "mt-4 text-red-500 font-bold h-6";
+                    return;
+                }
+                
+                // CRITICAL FIX: Stop camera stream immediately upon recognizing a valid prefix
+                stopScanner(); 
+
+                try { 
+                    const d = JSON.parse(p.substring(6)); 
+                    verifierKey = d.k; 
+                    verifierConfig = d.f.map(m => {
+                        const o = { name: m.n, t: m.t, x: m.x, y: m.y };
+                        if(m.h) o.hidden = true; 
+                        if(m.s) o.qrSize = m.s;
+                        if(m.dm) o.dateMode = m.dm;
+                        if(m.t === 'heading') {
+                            o.text = m.ht;
+                            o.fontSize = m.fs;
+                            o.headingColor = m.hc;
+                            o.fontWeight = m.fw;
+                        }
+                        return o;
+                    }); 
+                    verifierColors = { outline: d.c.o, outlineWidth: d.c.ow, label: d.c.l, value: d.c.v }; 
+                    $('verifierTemplateName').value = d.n; 
+                    $('verifierStatus').innerText = `Active: ${d.n}`; 
+                    $('verifierStatus').className = "text-xs text-green-600 font-bold"; 
+                    showToast("✅ Setup Complete!", "success"); 
+                } catch(e) { 
+                    console.error("Setup Error:", e);
+                    $('scanFeedback').innerText = "❌ Corrupt Setup Data.";
+                    $('scanFeedback').className = "mt-4 text-red-500 font-bold h-6";
+                } 
+                return;
+            }
+            if(scanMode === 'VERIFY') {
+                if(p.startsWith("SETUP|")) {
+                    $('scanFeedback').innerText = "⚠️ This is a Setup QR, not a ticket";
+                    $('scanFeedback').className = "mt-4 text-yellow-500 font-bold h-6";
+                    return;
+                }
+
+                // CRITICAL FIX: Stop camera stream immediately upon recognizing a valid prefix
+                stopScanner();
+                
+                try {
+                    const [nm, b] = p.split('|'); 
+                    
+                    // Asynchronous decryption, which happens after the camera is stopped
+                    const j = await decrypt(b, verifierKey); 
+                    const d = JSON.parse(j); 
+                    
+                    let err = [], val = true, col = null, stat = null;
+                    let fieldErrors = {}; // New object to track field-specific errors
+
+                    if($('ruleAgeEnabled').checked) { 
+                        const min=parseInt($('ruleAgeMin').value)||0, max=parseInt($('ruleAgeMax').value)||200, ath=parseInt($('ruleAgeAlertThreshold').value)||18;
+                        const af=verifierConfig.find(f=>f.type==='age'||f.name.toLowerCase()==='age'); 
+                        if(af&&d[af.name]) { 
+                            const fieldName = af.name;
+                            const a=parseInt(d[af.name]); 
+                            if(a<min){
+                                val=false;
+                                err.push(`Age < ${min}`);
+                                fieldErrors[fieldName] = { color: '#ef4444', message: `Too young (< ${min})` };
+                            } 
+                            if(a>max){
+                                val=false;
+                                err.push(`Age > ${max}`);
+                                fieldErrors[fieldName] = { color: '#ef4444', message: `Too old (> ${max})` };
+                            } 
+                            // If still valid, check for alert threshold
+                            if(val && a<ath){
+                                col=$('ruleAgeAlertColor').value;
+                                stat=`VALID (UNDER ${ath})`;
+                                fieldErrors[fieldName] = { color: col, message: `Under ${ath} (Alert)` };
+                            } 
+                        } 
+                    }
+
+                    if($('ruleTimeEnabled').checked) { 
+                        const m=$('ruleTimeMode').value, n=new Date();
+                        const df=verifierConfig.find(f=>f.type==='date');
+                        const td=df&&d[df.name]?new Date(d[df.name]):null;
+                        
+                        if (df && td) {
+                            const fieldName = df.name;
+                            if(m==='range'){
+                                const s=$('ruleTimeStart').value?new Date($('ruleTimeStart').value):null, e=$('ruleTimeEnd').value?new Date($('ruleTimeEnd').value):null; 
+                                if(s&&n<s){
+                                    val=false;
+                                    err.push("Not Started");
+                                    col=$('ruleTimeColor').value;
+                                    fieldErrors[fieldName] = { color: col, message: "Not Started" };
+                                } 
+                                if(e&&n>e){
+                                    val=false;
+                                    err.push("Expired");
+                                    col=$('ruleTimeColor').value;
+                                    fieldErrors[fieldName] = { color: col, message: "Expired" };
+                                } 
+                                if(td&&!s&&!e&&td<n){
+                                    // This path is usually only if date mode is not explicitly set in generator
+                                    val=false;
+                                    err.push("Date Passed");
+                                    col=$('ruleTimeColor').value;
+                                    fieldErrors[fieldName] = { color: col, message: "Date Passed" };
+                                }
+                            } else if(m==='single'){
+                                const vd=$('ruleTimeSingleDate').value; 
+                                if(vd&&td&&td.toISOString().split('T')[0]!==vd){
+                                    val=false;
+                                    err.push(`Wrong Date`);
+                                    col=$('ruleTimeColor').value;
+                                    fieldErrors[fieldName] = { color: col, message: `Wrong Date` };
+                                }
+                            } else if(m==='start'){
+                                const es=$('ruleTimeEventStart').value?new Date($('ruleTimeEventStart').value):null; 
+                                if(es&&td&&td<es){
+                                    val=false;
+                                    err.push("Too Early");
+                                    col=$('ruleTimeColor').value;
+                                    fieldErrors[fieldName] = { color: col, message: "Too Early" };
+                                }
+                            }
+                        }
+                    }
+
+                    // Duplicates and Custom Logic checks (Dupe check is system-wide, Custom can set color/status)
+                    if($('ruleDupesEnabled').checked) { 
+                        const uid=d._id, sf=verifierConfig.find(f=>f.type==='sequence'), id=uid||(sf?d[sf.name]:null); 
+                        if(id){
+                            const k=USED_TICKETS_PREFIX+nm, u=JSON.parse(localStorage.getItem(k)||'[]'); 
+                            if(u.includes(id)){
+                                val=false;
+                                err.push("Duplicate Scan");
+                                col=$('ruleDupesColor').value;
+                                // Duplicates apply to the entire pass, no specific field highlight necessary
+                            }else if(val){
+                                u.push(id);
+                                localStorage.setItem(k,JSON.stringify(u));
+                            }
+                        }
+                    }
+
+                    if($('ruleCustomEnabled').checked) { 
+                        const s=$('ruleCustomScript').value; 
+                        if(s.trim()){
+                            try{
+                                const f=new Function('data','NOW',`return (${s})`), r=f(d,new Date()); 
+                                if(typeof r==='object'){
+                                    if(r.hasOwnProperty('valid')){
+                                        if(!r.valid){val=false;err.push(r.text||"Custom Logic");}
+                                        if(r.color)col=r.color;
+                                        if(r.text)stat=r.text;
+                                    }
+                                }else if(!r){
+                                    val=false;
+                                    err.push("Custom Logic Failed");
+                                }
+                            }catch(e){
+                                val=false;
+                                err.push("Script Error: "+e.message);
+                            }
+                        }
+                    }
+                    
+                    const cnt=$('verifyResultContainer'), wrp=$('verifyResultCardWrapper'), txt=$('verifyStatusText'); 
+                    cnt.classList.remove('hidden'); 
+                    wrp.innerHTML="";
+                    
+                    const card=document.createElement('div'); 
+                    let fc=val?"#22c55e":"#ef4444"; 
+                    if(col)fc=col; 
+                    
+                    card.className="pass-canvas"; 
+                    card.style.borderColor=fc+" !important"; 
+                    card.style.borderWidth=(verifierColors.outlineWidth||2)+'px'; 
+                    card.style.borderStyle='solid'; 
+                    card.style.boxShadow=`0 0 30px ${fc}80`;
+                    
+                    // Set canvas size dynamically in the verifier preview
+                    card.style.width = CANVAS_WIDTH + 'px';
+                    card.style.height = CANVAS_HEIGHT + 'px';
+
+                    verifierConfig.forEach(f => {
+                        if(f.hidden) return; 
+                        
+                        const el=document.createElement('div'); 
+                        el.style.position='absolute'; 
+                        el.style.left=f.x+'px'; 
+                        el.style.top=f.y+'px'; 
+                        
+                        // Check for field-specific error and apply style
+                        const fieldError = fieldErrors[f.name];
+                        if (fieldError) {
+                            el.style.border = `2px solid ${fieldError.color}`;
+                            // Use a light tint of the error color (20% opacity)
+                            el.style.backgroundColor = `${fieldError.color}20`; 
+                        } else {
+                            // Ensure non-error fields are still styled correctly (padding matters)
+                            el.style.border = '1px solid transparent';
+                            el.style.backgroundColor = 'transparent';
+                        }
+                        
+                        if(f.type==='heading') el.innerHTML=`<div class="pass-heading" style="color:${f.headingColor}; font-size:${f.fontSize}px; font-weight:${f.fontWeight}">${f.text}</div>`; 
+                        else if(f.type === 'code') {
+                            // Placeholder for QR code to maintain layout
+                            const s = f.qrSize || 100;
+                            el.style.width = s + 'px';
+                            el.style.height = s + 'px';
+                            el.className += " flex items-center justify-center text-xs text-white/50 bg-gray-700/50 rounded-md border border-dashed border-gray-500";
+                            el.innerHTML = `<span>QR CODE AREA</span>`;
+                        }
+                        else {
+                            let v=d[f.name]; 
+                            if(f.type==='checkbox') v=v===true||v==='on'?'☑':'☐'; 
+                            if(f.type==='date') v=new Date(v).toLocaleDateString(); 
+                            el.innerHTML=`<div class="pass-label" style="color:${verifierColors.label}">${f.name}</div><div class="pass-value" style="color:${verifierColors.value}">${v}</div>`;
+                        } 
+                        card.appendChild(el);
+                    });
+                    
+                    wrp.appendChild(card); 
+                    txt.innerText=val?"✅ TICKET VALID":"❌ "+err.join(", "); 
+                    if(val&&stat)txt.innerText="✅ "+stat; 
+                    txt.style.color=fc; 
+                    txt.className="mt-4 text-3xl font-bold";
+                } catch(e) { 
+                    console.error("Verification Error:", e);
+                    $('scanFeedback').innerText = "❌ Ticket Data Corrupt or Invalid Key.";
+                    $('scanFeedback').className = "mt-4 text-red-500 font-bold h-6";
+                }
+            }
+        }
+
+        function showTab(id) { document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden')); document.getElementById(`content-${id}`).classList.remove('hidden'); document.querySelectorAll('.tab-button').forEach(b => { b.classList.remove('active', 'border-primary-blue', 'text-primary-blue'); b.classList.add('border-transparent', 'text-gray-500'); }); document.getElementById(`tab-${id}`).classList.add('active', 'border-primary-blue', 'text-primary-blue'); document.getElementById(`tab-${id}`).classList.remove('border-transparent', 'text-gray-500'); }
+    </script>
+</body>
+</html>
