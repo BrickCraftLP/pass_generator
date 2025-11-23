@@ -102,8 +102,9 @@
         .gap-guide::after { right: 0; }
 
 
-        .pass-label { font-size: 0.65rem; font-weight: 500; text-transform: uppercase; margin-bottom: 2px; pointer-events: none; }
-        .pass-value { font-size: 1rem; font-weight: 700; white-space: nowrap; pointer-events: none; }
+        /* Base styles removed, controlled by inline CSS now */
+        .pass-label { text-transform: uppercase; margin-bottom: 2px; pointer-events: none; line-height: 1.2; }
+        .pass-value { white-space: nowrap; pointer-events: none; line-height: 1.2; }
         .pass-heading { pointer-events: none; }
 
         .qr-code-container { background-color: white; border-radius: 6px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
@@ -159,7 +160,7 @@
                 grid-column: span 1 / span 1;
             }
             .pass-canvas {
-                 /* Scale down to fit mobile width, max-w-[90vw] */
+                /* Scale down to fit mobile width, max-w-[90vw] */
                 max-width: 90vw;
                 height: auto; 
                 aspect-ratio: 32 / 45; /* Maintain 320x450 aspect ratio */
@@ -251,16 +252,17 @@
                         <div>
                              <label class="block text-xs font-bold text-gray-500 mb-3">Quick Themes</label>
                              <div class="grid grid-cols-4 gap-2">
-                                <button onclick="applyTheme('standard')" class="h-8 w-full rounded bg-blue-500 border-2 border-transparent hover:border-gray-400" title="Standard Blue"></button>
-                                <button onclick="applyTheme('cyber')" class="h-8 w-full rounded bg-green-400 border-2 border-transparent hover:border-gray-400" title="Cyber Green"></button>
-                                <button onclick="applyTheme('gold')" class="h-8 w-full rounded bg-yellow-500 border-2 border-transparent hover:border-gray-400" title="Gold"></button>
-                                <button onclick="applyTheme('stark')" class="h-8 w-full rounded bg-gray-200 border-2 border-transparent hover:border-gray-400" title="Stark White"></button>
-                            </div>
+                                 <button onclick="applyTheme('standard')" class="h-8 w-full rounded bg-blue-500 border-2 border-transparent hover:border-gray-400" title="Standard Blue"></button>
+                                 <button onclick="applyTheme('cyber')" class="h-8 w-full rounded bg-green-400 border-2 border-transparent hover:border-gray-400" title="Cyber Green"></button>
+                                 <button onclick="applyTheme('gold')" class="h-8 w-full rounded bg-yellow-500 border-2 border-transparent hover:border-gray-400" title="Gold"></button>
+                                 <button onclick="applyTheme('stark')" class="h-8 w-full rounded bg-gray-200 border-2 border-transparent hover:border-gray-400" title="Stark White"></button>
+                             </div>
                         </div>
 
                         <!-- Colors -->
                         <div class="space-y-3">
                             <label class="block text-xs font-bold text-gray-500 mb-1">Colors</label>
+                            <div class="flex justify-between items-center"><label class="text-sm text-gray-600">Background</label><input type="color" id="bgColor" value="#1f2937" onchange="updateColors()"></div>
                             <div class="flex justify-between items-center"><label class="text-sm text-gray-600">Border</label><input type="color" id="outlineColor" value="#FFFFFF" onchange="updateColors()"></div>
                             <div class="flex justify-between items-center"><label class="text-sm text-gray-600">Labels</label><input type="color" id="labelColor" value="#9CA3AF" onchange="updateColors()"></div>
                             <div class="flex justify-between items-center"><label class="text-sm text-gray-600">Values</label><input type="color" id="valueColor" value="#FFFFFF" onchange="updateColors()"></div>
@@ -276,7 +278,7 @@
                                 </div>
                                 <input type="range" id="outlineWidth" min="0" max="10" value="2" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateColors()">
                             </div>
-                             <div>
+                            <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">Background Image</label>
                                 <input type="file" id="editorBgInput" accept="image/*" class="text-xs w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" onchange="handleBgUpload(this, 'passCanvas')">
                             </div>
@@ -304,7 +306,26 @@
                 <div id="savedKeyOutput" class="hidden w-full p-4 bg-green-50 border border-green-200 rounded-lg mt-4">
                     <h4 class="font-bold text-green-900">Template Saved Successfully!</h4>
                     <p class="text-sm text-green-800">Save this Key. It is required to authenticate.</p>
-                    <div class="mt-2 bg-white p-3 rounded border border-green-200 font-mono text-lg break-all select-all text-gray-800 text-center font-bold tracking-widest" id="keyToSave"></div>
+                    
+                    <!-- Encryption Key Section -->
+                    <div class="mt-2 bg-white p-3 rounded border border-green-200 font-mono text-lg break-all select-all text-gray-800 text-center font-bold tracking-widest flex justify-between items-center">
+                        <span id="keyToSave" class="flex-1 text-left"></span>
+                        <button onclick="copyToClipboard('keyToSave')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-md ml-4 flex items-center transition-colors flex-shrink-0">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-2-3l-2 2m2-2l-2-2"></path></svg>
+                            Copy Key
+                        </button>
+                    </div>
+                    
+                    <!-- Full Configuration Payload Section -->
+                    <h4 class="font-bold text-green-900 mt-4 border-t pt-3">Full Configuration Payload</h4>
+                    <p class="text-sm text-green-800 mb-2">Copy this whole string for setting up Verifiers or generating tickets without local storage.</p>
+                    <div class="mt-2 bg-gray-900 p-3 rounded border border-green-200 font-mono text-xs break-all select-all text-green-300 flex justify-between items-start">
+                        <span id="fullConfigPayload" class="break-all text-left flex-1"></span>
+                        <button onclick="copyToClipboard('fullConfigPayload')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold px-3 py-1.5 rounded-md ml-4 flex items-center transition-colors flex-shrink-0">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-2-3l-2 2m2-2l-2-2"></path></svg>
+                            Copy Payload
+                        </button>
+                    </div>
                 </div>
 
             </div>
@@ -315,11 +336,22 @@
                     <!-- Manual Load -->
                     <div id="template-loader" class="bg-white p-6 rounded-xl border-2 border-dashed border-gray-300">
                         <h2 class="text-lg font-bold text-gray-800 mb-4">🔐 Load Template</h2>
+                        
+                        <!-- Option 1: Load from Local Storage (Name + Key) -->
                         <div class="grid md:grid-cols-3 gap-4 items-end">
                             <div><label class="text-xs font-bold text-gray-500 uppercase">Template Name</label><input type="text" id="templateNameLoad" value="PASS_WALLET_CARD" class="w-full p-2 border rounded-lg"></div>
                             <div><label class="text-xs font-bold text-gray-500 uppercase">Encryption Key</label><input type="text" id="encryptionKeyLoad" placeholder="Paste key..." class="w-full p-2 border rounded-lg font-mono text-sm"></div>
-                            <button onclick="loadAndAuthenticateTemplate()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Load</button>
+                            <button onclick="loadAndAuthenticateTemplate(false)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Load from Storage</button>
                         </div>
+                        
+                        <div class="mt-6 border-t pt-4">
+                            <h3 class="text-sm font-bold text-gray-800 mb-3">OR Paste Full Config Payload</h3>
+                            <div class="flex gap-4 items-end">
+                                <input type="text" id="rawConfigLoad" placeholder="SETUP|{...}" class="w-full p-2 border rounded-lg font-mono text-sm">
+                                <button onclick="loadAndAuthenticateTemplate(true)" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg flex-shrink-0">Load Raw</button>
+                            </div>
+                        </div>
+
                         <p id="authStatus" class="mt-3 text-sm font-medium hidden"></p>
                     </div>
 
@@ -406,9 +438,57 @@
                                     <!-- Duplicates -->
                                     <details class="border border-gray-200 rounded-lg overflow-hidden"><summary class="bg-gray-50 p-3 text-sm font-medium cursor-pointer hover:bg-gray-100 flex items-center justify-between"><span>🔂 Duplicate Prevention</span><input type="checkbox" id="ruleDupesEnabled" checked class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white text-xs text-gray-600 space-y-2"><p>Uses unique Hex ID.</p><div class="flex items-center justify-between mt-2 pt-2 border-t"><div class="color-input-wrapper"><input type="color" id="ruleDupesColor" value="#ff0000"><span>Violation Color</span></div></div></div></details>
                                     <!-- Age -->
-                                    <details class="border border-gray-200 rounded-lg overflow-hidden"><summary class="bg-gray-50 p-3 text-sm font-medium cursor-pointer hover:bg-gray-100 flex items-center justify-between"><span>🔞 Age Restrictions</span><input type="checkbox" id="ruleAgeEnabled" class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold mb-1">Min Age</label><input type="number" id="ruleAgeMin" value="0" class="rule-input w-full"></div><div><label class="block text-xs font-bold mb-1">Max Age</label><input type="number" id="ruleAgeMax" value="100" class="rule-input w-full"></div><div class="col-span-2 border-t mt-2 pt-2 bg-gray-50 p-3 rounded"><label class="block text-xs font-bold mb-1 text-blue-600">Special Alert</label><div class="flex items-center gap-4"><div><span class="text-xs text-gray-500 mr-2">If age < </span><input type="number" id="ruleAgeAlertThreshold" value="18" class="rule-input w-16 text-center"></div><div class="color-input-wrapper"><input type="color" id="ruleAgeAlertColor" value="#FFA500"><span>Set Color</span></div></div></div></div></details>
-                                    <!-- Time -->
-                                    <details class="border border-gray-200 rounded-lg overflow-hidden"><summary class="bg-gray-50 p-3 text-sm font-medium cursor-pointer hover:bg-gray-100 flex items-center justify-between"><span>📅 Validity Period</span><input type="checkbox" id="ruleTimeEnabled" class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white space-y-4"><div><label class="block text-xs font-bold mb-1">Logic Mode</label><select id="ruleTimeMode" class="w-full rule-input text-xs" onchange="toggleTimeInputs()"><option value="range">Time Range</option><option value="single">Single Date</option><option value="start">Event Start</option></select></div><div id="timeInputRange" class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold mb-1">Start</label><input type="datetime-local" id="ruleTimeStart" class="rule-input w-full"></div><div><label class="block text-xs font-bold mb-1">End</label><input type="datetime-local" id="ruleTimeEnd" class="rule-input w-full"></div></div><div id="timeInputSingle" class="hidden"><label class="block text-xs font-bold mb-1">Valid Date</label><input type="date" id="ruleTimeSingleDate" class="rule-input w-full"></div><div id="timeInputStart" class="hidden"><label class="block text-xs font-bold mb-1">Event Start Time</label><input type="datetime-local" id="ruleTimeEventStart" class="rule-input w-full"></div><div class="flex items-center justify-between mt-2 pt-2 border-t"><div class="color-input-wrapper"><input type="color" id="ruleTimeColor" value="#ff0000"><span>Invalid Time Color</span></div></div></div></details>
+                                    <details class="border border-gray-200 rounded-lg overflow-hidden"><summary class="bg-gray-50 p-3 text-sm font-medium cursor-pointer hover:bg-gray-100 flex items-center justify-between"><span>🔞 Age Restrictions</span><input type="checkbox" id="ruleAgeEnabled" class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white grid grid-cols-2 gap-4">
+                                        <div><label class="block text-xs font-bold mb-1">Min Age</label><input type="number" id="ruleAgeMin" value="0" class="rule-input w-full"></div>
+                                        <div><label class="block text-xs font-bold mb-1">Max Age</label><input type="number" id="ruleAgeMax" value="100" class="rule-input w-full"></div>
+                                        
+                                        <!-- NEW: Special Alerts Container -->
+                                        <div class="col-span-2 border-t mt-2 pt-2 space-y-3" id="ageSpecialAlertsContainer">
+                                            <h4 class="text-sm font-bold text-gray-800 flex items-center justify-between">
+                                                Special Alerts (Max 3)
+                                                <button onclick="addNewAgeAlert()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-2 py-1 rounded-full disabled:opacity-50 transition-colors" id="addAgeAlertBtn">
+                                                    + Add Alert
+                                                </button>
+                                            </h4>
+                                            <!-- Alerts will be injected here by JS -->
+                                        </div>
+                                    </div></details>
+                                    <!-- Time (Reworked) -->
+                                    <details class="border border-gray-200 rounded-lg overflow-hidden"><summary class="bg-gray-50 p-3 text-sm font-medium cursor-pointer hover:bg-gray-100 flex items-center justify-between"><span>📅 Validity Period</span><input type="checkbox" id="ruleTimeEnabled" class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white space-y-4">
+                                        
+                                        <div>
+                                            <label class="block text-xs font-bold mb-1">Logic Mode</label>
+                                            <select id="ruleTimeMode" class="w-full rule-input text-xs" onchange="toggleTimeInputs()">
+                                                <option value="expiryCheck">1. Standard Expiry Check (Ticket Date & Time)</option>
+                                                <option value="ticketDateMatchToday">2. Ticket Date Must Match Today</option>
+                                                <option value="currentDateTimeRange">3. Current Date + Time Range</option>
+                                                <option value="specificDateTime">4. Specific Date & Time</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Time Input Panels -->
+                                        
+                                        <!-- 1. Standard Expiry Check (Hidden) -->
+                                        <!-- 2. Ticket Date Must Match Today (Hidden) -->
+
+                                        <!-- 3. Current Date + Time Range -->
+                                        <div id="timeInputCurrentDateTimeRange" class="hidden grid grid-cols-2 gap-4">
+                                            <div class="col-span-2 text-xs text-gray-500 font-medium">Validation runs against current day, but within this time slot:</div>
+                                            <div><label class="block text-xs font-bold mb-1">Start Time</label><input type="time" id="ruleTimeStartRange" class="rule-input w-full"></div>
+                                            <div><label class="block text-xs font-bold mb-1">End Time</label><input type="time" id="ruleTimeEndRange" class="rule-input w-full"></div>
+                                        </div>
+                                        
+                                        <!-- 4. Specific Date & Time -->
+                                        <div id="timeInputSpecificDateTime" class="hidden grid grid-cols-2 gap-4">
+                                            <div class="col-span-2 text-xs text-gray-500 font-medium">Ticket must match or exceed this specific point in time:</div>
+                                            <div><label class="block text-xs font-bold mb-1">Valid Date</label><input type="date" id="ruleTimeValidDate" class="rule-input w-full"></div>
+                                            <div><label class="block text-xs font-bold mb-1">Valid Time</label><input type="time" id="ruleTimeValidTime" class="rule-input w-full"></div>
+                                        </div>
+                                        
+                                        <div class="flex items-center justify-between mt-2 pt-2 border-t">
+                                            <div class="color-input-wrapper"><input type="color" id="ruleTimeColor" value="#ff0000"><span>Violation Color</span></div>
+                                        </div>
+                                    </div></details>
                                     <!-- Custom -->
                                     <details class="border border-blue-200 rounded-lg overflow-hidden"><summary class="bg-blue-50 p-3 text-sm font-medium cursor-pointer hover:bg-blue-100 flex items-center justify-between text-blue-900"><span>⚡ Advanced Logic (JS)</span><input type="checkbox" id="ruleCustomEnabled" class="w-4 h-4" onclick="event.stopPropagation()"></summary><div class="p-4 bg-white space-y-2"><p class="text-xs text-gray-500">Write JS.</p><textarea id="ruleCustomScript" rows="3" class="w-full p-2 border rounded font-mono text-xs bg-gray-50" placeholder="if (data.Seat.startsWith('A')) return {valid:true, color:'#FFD700', text:'GOLD VIP'}; return true;"></textarea></div></details>
                                 </div>
@@ -439,11 +519,11 @@
             <div class="absolute inset-0 flex items-center justify-center z-50">
                 <!-- Reticle Box (z-index 100) -->
                 <div class="w-64 h-64 border-2 border-white/50 rounded-xl relative scan-region">
-                     <!-- Corners (z-index > 100) -->
-                     <div class="absolute top-0 left-0 w-6 h-6 border-l-4 border-t-4 border-blue-500 -ml-1 -mt-1 rounded-tl-lg z-50"></div>
-                     <div class="absolute top-0 right-0 w-6 h-6 border-r-4 border-t-4 border-blue-500 -mr-1 -mt-1 rounded-tr-lg z-50"></div>
-                     <div class="absolute bottom-0 left-0 w-6 h-6 border-l-4 border-b-4 border-blue-500 -ml-1 -mb-1 rounded-bl-lg z-50"></div>
-                     <div class="absolute bottom-0 right-0 w-6 h-6 border-r-4 border-b-4 border-blue-500 -mr-1 -mb-1 rounded-br-lg z-50"></div>
+                    <!-- Corners (z-index > 100) -->
+                    <div class="absolute top-0 left-0 w-6 h-6 border-l-4 border-t-4 border-blue-500 -ml-1 -mt-1 rounded-tl-lg z-50"></div>
+                    <div class="absolute top-0 right-0 w-6 h-6 border-r-4 border-t-4 border-blue-500 -mr-1 -mt-1 rounded-tr-lg z-50"></div>
+                    <div class="absolute bottom-0 left-0 w-6 h-6 border-l-4 border-b-4 border-blue-500 -ml-1 -mb-1 rounded-bl-lg z-50"></div>
+                    <div class="absolute bottom-0 right-0 w-6 h-6 border-r-4 border-b-4 border-blue-500 -mr-1 -mb-1 rounded-br-lg z-50"></div>
                 </div>
             </div>
 
@@ -494,6 +574,33 @@
 
                 <!-- Specific Options Panels -->
                 <div id="dateSettings" class="hidden"><select id="dateMode" class="w-full p-2 border rounded"><option value="date">Date Only</option><option value="time">Time Only</option><option value="datetime">Both</option></select></div>
+                
+                <!-- NEW: Text Styles (Visible for standard fields) -->
+                <div id="textSettings" class="hidden space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <h4 class="text-sm font-bold text-gray-700 mt-0">Label Style</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="labelSize" min="8" max="24" placeholder="Size (px)" class="border rounded p-1 text-sm">
+                        <select id="labelWeight" class="border rounded p-1 text-sm">
+                            <option value="400">Normal</option><option value="500">Medium</option><option value="700">Bold</option>
+                        </select>
+                        <select id="labelStyle" class="border rounded p-1 text-sm">
+                            <option value="normal">Normal</option><option value="italic">Italic</option>
+                        </select>
+                    </div>
+
+                    <h4 class="text-sm font-bold text-gray-700 mt-4 border-t pt-3">Value Style</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="valueSize" min="12" max="36" placeholder="Size (px)" class="border rounded p-1 text-sm">
+                        <select id="valueWeight" class="border rounded p-1 text-sm">
+                            <option value="400">Normal</option><option value="500">Medium</option><option value="700">Bold</option>
+                        </select>
+                        <select id="valueStyle" class="border rounded p-1 text-sm">
+                            <option value="normal">Normal</option><option value="italic">Italic</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Heading Settings -->
                 <div id="headingSettings" class="hidden">
                     <input type="text" id="headingText" class="w-full p-2 border rounded mb-2">
                     <div class="grid grid-cols-3 gap-2"><input type="number" id="headingSize" class="border rounded p-1"><input type="color" id="headingColor" class="h-8"><select id="headingWeight" class="border rounded"><option value="400">Normal</option><option value="700">Bold</option></select></div>
@@ -533,9 +640,10 @@
         let scanMode = null; 
         let videoStream = null;
         let fields = [];
-        let currentColors = { outline: '#FFFFFF', outlineWidth: 2, label: '#9CA3AF', value: '#FFFFFF' };
+        let currentColors = { bgColor: '#1f2937', outline: '#FFFFFF', outlineWidth: 2, label: '#9CA3AF', value: '#FFFFFF' };
         let isDragging = false, dragTarget = null, dragOffset = { x: 0, y: 0 }, editingId = null;
         let snapCandidates = [];
+        let ageAlertCounter = 0; // New counter for unique alert IDs
 
         const $ = id => document.getElementById(id);
 
@@ -557,17 +665,59 @@
             }, 3000);
         }
 
+        // New function for copying to clipboard
+        async function copyToClipboard(elementId) {
+            const el = $(elementId);
+            const text = el.innerText || el.textContent;
+            
+            if (!text) {
+                return showToast("Nothing to copy!", "error");
+            }
+
+            try {
+                // Use modern Clipboard API
+                await navigator.clipboard.writeText(text);
+                showToast("Copied to clipboard!", "success");
+            } catch (err) {
+                // Fallback for restricted environments
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = text;
+                tempTextArea.style.position = 'fixed'; 
+                tempTextArea.style.top = '0';
+                tempTextArea.style.left = '0';
+                tempTextArea.style.opacity = '0';
+                document.body.appendChild(tempTextArea);
+                
+                tempTextArea.focus();
+                tempTextArea.select();
+                
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        showToast("Copied to clipboard!", "success");
+                    } else {
+                        showToast("Failed to copy. Select and copy manually.", "error");
+                    }
+                } catch (err2) {
+                    showToast("Failed to copy. Select and copy manually.", "error");
+                }
+                
+                document.body.removeChild(tempTextArea);
+            }
+        }
+        
         // --- THEMES & STYLES ---
         const themes = {
-            standard: { outline: '#3b82f6', outlineWidth: 2, label: '#9CA3AF', value: '#FFFFFF' },
-            cyber: { outline: '#22c55e', outlineWidth: 4, label: '#86efac', value: '#FFFFFF' },
-            gold: { outline: '#eab308', outlineWidth: 2, label: '#fde047', value: '#FFFFFF' },
-            stark: { outline: '#ffffff', outlineWidth: 1, label: '#94a3b8', value: '#f8fafc' }
+            standard: { bgColor: '#1f2937', outline: '#3b82f6', outlineWidth: 2, label: '#9CA3AF', value: '#FFFFFF' },
+            cyber: { bgColor: '#042f2e', outline: '#22c55e', outlineWidth: 4, label: '#86efac', value: '#FFFFFF' },
+            gold: { bgColor: '#3b0000', outline: '#eab308', outlineWidth: 2, label: '#fde047', value: '#FFFFFF' },
+            stark: { bgColor: '#ffffff', outline: '#94a3b8', outlineWidth: 1, label: '#94a3b8', value: '#1f2937' }
         };
 
         function applyTheme(key) {
             const t = themes[key];
             if(!t) return;
+            $('bgColor').value = t.bgColor;
             $('outlineColor').value = t.outline;
             $('outlineWidth').value = t.outlineWidth;
             $('labelColor').value = t.label;
@@ -588,8 +738,20 @@
         }
         
         function updateColors() {
-            currentColors = { outline: $('outlineColor').value, outlineWidth: $('outlineWidth').value, label: $('labelColor').value, value: $('valueColor').value };
+            currentColors = { 
+                bgColor: $('bgColor').value, 
+                outline: $('outlineColor').value, 
+                outlineWidth: $('outlineWidth').value, 
+                label: $('labelColor').value, 
+                value: $('valueColor').value 
+            };
             $('borderWidthDisplay').innerText = currentColors.outlineWidth + 'px';
+            
+            // Update canvas background color for solid color (remove linear-gradient and image)
+            const canvasEl = $('passCanvas');
+            canvasEl.style.backgroundImage = ''; // Remove background image/gradient
+            canvasEl.style.backgroundColor = currentColors.bgColor;
+
             renderEditor();
         }
 
@@ -613,6 +775,13 @@
             renderEditor();
             showTab('editor');
             updateColors();
+
+            // Initialize Age Special Alert Rules on load
+            addNewAgeAlert('younger', 18, 0, '#FFA500', 'Underage Alert');
+            updateAgeAlertButton();
+            
+            // Set initial state for time inputs
+            toggleTimeInputs();
         };
 
         // --- DRAG & DROP ENGINE ---
@@ -752,7 +921,15 @@
         });
 
         function addField(name, type, x, y, opts = {}, edit = false) {
-            const defs = { qrSize: 200, dateMode: 'date', text: 'HEADING', headingColor:'#FFF', fontSize:24, fontWeight:'700', hidden: false };
+            const defs = { 
+                qrSize: 200, dateMode: 'date', 
+                // Heading Specific
+                text: 'HEADING', headingColor:'#FFF', fontSize:24, fontWeight:'700', 
+                // Text Field Specific (applies to string, number, age, checkbox, seat, gate, sequence, date)
+                labelSize: 10, labelWeight: '500', labelStyle: 'normal',
+                valueSize: 16, valueWeight: '700', valueStyle: 'normal',
+                hidden: false 
+            };
             const uid = Date.now() + Math.random(); 
             const f = { id: uid, name, type, x, y, ...defs, ...opts };
             fields.push(f); renderEditor(); if(edit) openModal(f.id);
@@ -784,6 +961,9 @@
             $('passCanvas').style.borderColor = currentColors.outline;
             $('passCanvas').style.borderWidth = (currentColors.outlineWidth || 2) + 'px';
             $('passCanvas').style.borderStyle = 'dashed'; 
+            
+            // Set explicit background color (will be overwritten by image if present)
+            $('passCanvas').style.backgroundColor = currentColors.bgColor;
 
             fields.forEach(f => {
                 const el = document.createElement('div');
@@ -807,8 +987,12 @@
                     let val = "DATA"; 
                     if(f.type === 'age') val = "25"; if(f.type === 'seat') val = "12A"; if(f.type === 'gate') val = "B2"; if(f.type === 'checkbox') val = "☑";
                     let labelText = f.name;
-                    if(f.hidden) labelText += " 👁️‍🗨️";
-                    el.innerHTML = `<div class="pass-label" style="color:${currentColors.label}">${labelText}</div><div class="pass-value" style="color:${currentColors.value}">${val}</div>`;
+                    if(f.hidden) labelText += " 👁️‍🗨️"; 
+                    
+                    const labelStyle = `color:${currentColors.label}; font-size:${f.labelSize}px; font-weight:${f.labelWeight}; font-style:${f.labelStyle}`;
+                    const valueStyle = `color:${currentColors.value}; font-size:${f.valueSize}px; font-weight:${f.valueWeight}; font-style:${f.valueStyle};`;
+                    
+                    el.innerHTML = `<div class="pass-label" style="${labelStyle}">${labelText}</div><div class="pass-value" style="${valueStyle}">${val}</div>`;
                 }
                 el.addEventListener('mousedown', handleDragStart);
                 el.addEventListener('dblclick', () => openModal(f.id));
@@ -823,48 +1007,210 @@
         // --- EDITOR: MODAL ---
         function toggleFieldOptions() {
             const t = $('fieldType').value;
-            ['qrSettings','dateSettings','headingSettings'].forEach(id => $(id).classList.add('hidden'));
-            if(t === 'code') $('qrSettings').classList.remove('hidden');
-            if(t === 'date') $('dateSettings').classList.remove('hidden');
-            if(t === 'heading') $('headingSettings').classList.remove('hidden');
+            // Hide all special panels
+            ['qrSettings','dateSettings','headingSettings','textSettings'].forEach(id => $(id).classList.add('hidden'));
+            
+            // Show appropriate panel
+            if(t === 'code') {
+                $('qrSettings').classList.remove('hidden');
+            }
+            else if(t === 'heading') {
+                $('headingSettings').classList.remove('hidden');
+            }
+            else {
+                // Show Date options only if type is date
+                if(t === 'date') $('dateSettings').classList.remove('hidden');
+                // Show Text styles for all standard fields
+                $('textSettings').classList.remove('hidden');
+            }
         }
+
         function openModal(id) {
             editingId = id; const f = fields.find(i => i.id === id);
             $('fieldName').value = f.name; $('fieldType').value = f.type;
             $('fieldHidden').checked = f.hidden || false;
-            if(f.type === 'code') { $('qrSize').value = f.qrSize; $('qrSizeVal').innerText = f.qrSize+'px'; }
-            if(f.type === 'date') $('dateMode').value = f.dateMode;
-            if(f.type === 'heading') { $('headingText').value = f.text; $('headingSize').value = f.fontSize; $('headingColor').value = f.headingColor; $('headingWeight').value = f.fontWeight; }
-            toggleFieldOptions(); $('deleteButton').classList.remove('hidden');
+            
+            // Load Heading Specifics
+            if(f.type === 'heading') { 
+                $('headingText').value = f.text; 
+                $('headingSize').value = f.fontSize; 
+                $('headingColor').value = f.headingColor; 
+                $('headingWeight').value = f.fontWeight; 
+            }
+            // Load QR Specifics
+            else if(f.type === 'code') { 
+                $('qrSize').value = f.qrSize; 
+                $('qrSizeVal').innerText = f.qrSize+'px'; 
+            }
+            // Load Date Specifics
+            else if(f.type === 'date') { 
+                $('dateMode').value = f.dateMode; 
+            }
+            
+            // Load Text Style Specifics (applies to all non-heading/non-code fields)
+            if(f.type !== 'heading' && f.type !== 'code') {
+                $('labelSize').value = f.labelSize;
+                $('labelWeight').value = f.labelWeight;
+                $('labelStyle').value = f.labelStyle;
+                $('valueSize').value = f.valueSize;
+                $('valueWeight').value = f.valueWeight;
+                $('valueStyle').value = f.valueStyle;
+            }
+
+            toggleFieldOptions(); 
+            $('deleteButton').classList.remove('hidden');
             $('deleteButton').onclick = () => { fields = fields.filter(i => i.id !== editingId); renderEditor(); closeModal(); };
             $('configModal').classList.remove('hidden');
         }
+
         function closeModal() { $('configModal').classList.add('hidden'); editingId = null; }
+        
         $('saveButton').onclick = () => {
             const f = fields.find(i => i.id === editingId);
             f.name = $('fieldName').value; f.type = $('fieldType').value;
             f.hidden = $('fieldHidden').checked;
-            if(f.type === 'code') f.qrSize = parseInt($('qrSize').value);
-            if(f.type === 'date') f.dateMode = $('dateMode').value;
-            if(f.type === 'heading') { f.text = $('headingText').value; f.fontSize = $('headingSize').value; f.headingColor = $('headingColor').value; f.fontWeight = $('headingWeight').value; }
-            renderEditor(); closeModal();
+            
+            if(f.type === 'code') {
+                f.qrSize = parseInt($('qrSize').value);
+            }
+            else if(f.type === 'date') {
+                f.dateMode = $('dateMode').value;
+                // Save text styles for date fields as well
+                f.labelSize = parseInt($('labelSize').value);
+                f.labelWeight = $('labelWeight').value;
+                f.labelStyle = $('labelStyle').value;
+                f.valueSize = parseInt($('valueSize').value);
+                f.valueWeight = $('valueWeight').value;
+                f.valueStyle = $('valueStyle').value;
+            }
+            else if(f.type === 'heading') {
+                f.text = $('headingText').value; 
+                f.fontSize = parseInt($('headingSize').value); 
+                f.headingColor = $('headingColor').value; 
+                f.fontWeight = $('headingWeight').value;
+            }
+            else {
+                // Save text styles for all other standard fields
+                f.labelSize = parseInt($('labelSize').value);
+                f.labelWeight = $('labelWeight').value;
+                f.labelStyle = $('labelStyle').value;
+                f.valueSize = parseInt($('valueSize').value);
+                f.valueWeight = $('valueWeight').value;
+                f.valueStyle = $('valueStyle').value;
+            }
+
+            renderEditor(); 
+            closeModal();
         };
 
         // --- CRYPTO & STORAGE ---
+        function bufferToUrlSafeBase64(buffer) {
+            // Converts ArrayBuffer to URL-safe Base64 string
+            const binary = String.fromCharCode(...new Uint8Array(buffer));
+            const b64 = btoa(binary);
+            return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); // URL safe + remove padding
+        }
+
+        function urlSafeBase64ToBuffer(str) {
+            // Converts URL-safe Base64 string back to ArrayBuffer
+            const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            // Re-add padding if necessary (Base64 requires padding to be a multiple of 4)
+            const padding = (4 - b64.length % 4) % 4;
+            const paddedB64 = b64 + '==='.slice(0, padding);
+            
+            const binary = atob(paddedB64);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+
         async function getKey(p) { const e = new TextEncoder(); const k = await crypto.subtle.importKey("raw", e.encode(p), {name:"PBKDF2"}, false, ["deriveKey"]); return crypto.subtle.deriveKey({name:"PBKDF2", salt: e.encode("SaltV7"), iterations:100000, hash:"SHA-256"}, k, {name:"AES-GCM", length:256}, true, ["encrypt","decrypt"]); }
-        async function encrypt(d, p) { const k = await getKey(p); const iv = crypto.getRandomValues(new Uint8Array(12)); const c = await crypto.subtle.encrypt({name:"AES-GCM", iv}, k, new TextEncoder().encode(d)); const b = new Uint8Array(iv.byteLength+c.byteLength); b.set(iv,0); b.set(new Uint8Array(c),12); return btoa(String.fromCharCode(...b)); }
-        async function decrypt(b64, p) { const k = await getKey(p); const s = atob(b64); const b = new Uint8Array(s.length); for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i); const dec = await crypto.subtle.decrypt({name:"AES-GCM", iv:b.slice(0,12)}, k, b.slice(12)); return new TextDecoder().decode(dec); }
+        
+        async function encrypt(d, p) { 
+            const k = await getKey(p); 
+            const iv = crypto.getRandomValues(new Uint8Array(12)); 
+            const c = await crypto.subtle.encrypt({name:"AES-GCM", iv}, k, new TextEncoder().encode(d)); 
+            const b = new Uint8Array(iv.byteLength+c.byteLength); 
+            b.set(iv,0); 
+            b.set(new Uint8Array(c),12); 
+            // Return URL-safe Base64 encoding which is slightly more compact
+            return bufferToUrlSafeBase64(b.buffer);
+        }
+
+        async function decrypt(b64, p) { 
+            const k = await getKey(p); 
+            const b = new Uint8Array(urlSafeBase64ToBuffer(b64));
+            // Check minimum size (12 bytes IV + 16 bytes auth tag + payload min)
+            if (b.byteLength < 28) throw new Error("Invalid payload size");
+
+            const dec = await crypto.subtle.decrypt({name:"AES-GCM", iv:b.slice(0,12)}, k, b.slice(12)); 
+            return new TextDecoder().decode(dec); 
+        }
+
+        // New helper function to construct the full configuration payload string
+        function getSetupPayload(name, key, fields, colors) {
+            const miniFields = fields.map(f => {
+                const o = { n: f.name, t: f.type, x: f.x, y: f.y };
+                if(f.hidden) o.h = 1;
+                // Only include specific options if they deviate from default/zero
+                if(f.type === 'code' && f.qrSize !== 200) o.s = f.qrSize; 
+                if(f.type === 'date' && f.dateMode !== 'date') o.dm = f.dateMode; 
+                
+                // Fields with custom text styles (includes date)
+                if (f.t !== 'code' && f.t !== 'heading') {
+                    if(f.labelSize !== 10) o.ls = f.labelSize; 
+                    if(f.labelWeight !== '500') o.lw = f.labelWeight;
+                    if(f.labelStyle !== 'normal') o.lst = f.labelStyle;
+                    if(f.valueSize !== 16) o.vs = f.valueSize; 
+                    if(f.valueWeight !== '700') o.vw = f.valueWeight;
+                    if(f.valueStyle !== 'normal') o.vst = f.valueStyle;
+                }
+                
+                // Heading specific (no label/value styles)
+                if(f.type === 'heading') { 
+                    o.ht = f.text; 
+                    if(f.fontSize !== 24) o.fs = f.fontSize; 
+                    if(f.headingColor !== '#FFF') o.hc = f.headingColor; 
+                    if(f.fontWeight !== '700') o.fw = f.fontWeight; 
+                }
+                return o;
+            });
+            // Only include color/style if they deviate from default
+            const miniColors = {};
+            if(colors.bgColor !== '#1f2937') miniColors.bg = colors.bgColor; // NEW: Background Color
+            if(colors.outline !== '#FFFFFF') miniColors.o = colors.outline;
+            if(colors.outlineWidth !== 2) miniColors.ow = colors.outlineWidth;
+            if(colors.label !== '#9CA3AF') miniColors.l = colors.label;
+            if(colors.value !== '#FFFFFF') miniColors.v = colors.value;
+
+            // JSON.stringify handles escaping the string
+            return `SETUP|${JSON.stringify({ n: name, k: key, f: miniFields, c: miniColors })}`;
+        }
+
 
         async function saveTemplate() {
             const name = $('templateNameSave').value.toUpperCase();
             if(!name || !fields.length) return showToast("Missing Name or Fields");
+            
+            // 1. Generate key and save to localStorage (existing logic)
             encryptionKey = crypto.randomUUID(); 
             const hash = await encrypt("TEST", encryptionKey);
             const data = { config: fields, colors: currentColors, verifyHash: hash };
             const store = JSON.parse(localStorage.getItem(TEMPLATE_STORAGE_KEY) || '{}');
             store[name] = JSON.stringify(data);
             localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(store));
+            
+            // 2. Generate and display the full configuration payload
+            const payload = getSetupPayload(name, encryptionKey, fields, currentColors);
+
             $('keyToSave').innerText = encryptionKey;
+            $('fullConfigPayload').innerText = payload; // Display the raw string
+            
+            // 3. Update UI
             $('savedKeyOutput').classList.remove('hidden');
             $('showMasterQrBtn').classList.remove('hidden');
             window.scrollTo(0, document.body.scrollHeight);
@@ -873,36 +1219,132 @@
         function showMasterQR() {
             const name = $('templateNameSave').value.toUpperCase();
             if(!encryptionKey) return showToast("Save template first");
-            const miniFields = fields.map(f => {
-                const o = { n: f.name, t: f.type, x: f.x, y: f.y };
-                if(f.hidden) o.h = 1; // 1 for hidden
-                if(f.type === 'code') o.s = f.qrSize; if(f.type === 'date') o.dm = f.dateMode; if(f.type === 'heading') { o.ht = f.text; o.fs = f.fontSize; o.hc = f.headingColor; o.fw = f.fontWeight; }
-                return o;
-            });
-            const miniColors = { o: currentColors.outline, ow: currentColors.outlineWidth, l: currentColors.label, v: currentColors.value };
-            const payload = `SETUP|${JSON.stringify({ n: name, k: encryptionKey, f: miniFields, c: miniColors })}`;
+            
+            // Use the already generated payload string from the output area
+            const payload = $('fullConfigPayload').innerText;
+
             $('masterQrTarget').innerHTML = "";
             // Using HIGH correction level for Setup QR
             new QRCode($('masterQrTarget'), { text: payload, width: 300, height: 300, correctLevel: QRCode.CorrectLevel.H });
             $('masterQrModal').classList.remove('hidden');
         }
 
-        async function loadAndAuthenticateTemplate() {
-            const name = $('templateNameLoad').value.toUpperCase(); const key = $('encryptionKeyLoad').value.trim();
-            try {
-                const store = JSON.parse(localStorage.getItem(TEMPLATE_STORAGE_KEY) || '{}');
-                if(!store[name]) throw new Error("Template not found");
-                const data = JSON.parse(store[name]);
-                await decrypt(data.verifyHash, key);
-                encryptionKey = key; loadedTemplateName = name; loadedTemplateConfig = data.config; loadedColors = data.colors;
-                $('authStatus').innerText = "✅ Loaded"; $('authStatus').classList.remove('hidden');
-                $('creation-section').classList.remove('opacity-50','pointer-events-none');
-                $('keyStatusDot').className = "w-2 w-2 rounded-full bg-green-500 mr-2"; $('secretKeyDisplay').innerText = "KEY LOADED";
-                renderInputForm();
-            } catch(e) { showToast("Load Failed: " + e.message); }
+        async function loadAndAuthenticateTemplate(useRawPayload = false) {
+            let dataToLoad = null;
+            let name = null;
+            let key = null;
+
+            if (useRawPayload) {
+                const rawPayload = $('rawConfigLoad').value.trim();
+                if (!rawPayload.startsWith("SETUP|")) {
+                    $('authStatus').innerText = "❌ Raw payload must start with 'SETUP|'";
+                    $('authStatus').classList.remove('hidden', 'text-green-600');
+                    $('authStatus').classList.add('text-red-500');
+                    return;
+                }
+                
+                try {
+                    const setupData = JSON.parse(rawPayload.substring(6));
+                    name = setupData.n;
+                    key = setupData.k;
+                    
+                    // Re-inflate the full configuration structure from the mini payload
+                    const rehydratedConfig = setupData.f.map(m => {
+                        const o = { name: m.n, t: m.t, x: m.x, y: m.y };
+                        if(m.h) o.hidden = true; 
+                        
+                        // Default properties (must match defaults in addField)
+                        const defaults = {
+                            qrSize: 200, dateMode: 'date', 
+                            labelSize: 10, labelWeight: '500', labelStyle: 'normal',
+                            valueSize: 16, valueWeight: '700', valueStyle: 'normal',
+                            text: 'HEADING', headingColor:'#FFF', fontSize:24, fontWeight:'700', 
+                        };
+                        
+                        // Map compacted properties back, using defaults if missing
+                        o.qrSize = m.s || defaults.qrSize;
+                        o.dateMode = m.dm || defaults.dateMode;
+                        
+                        if(m.t === 'heading') {
+                            o.text = m.ht || defaults.text;
+                            o.fontSize = m.fs || defaults.fontSize;
+                            o.headingColor = m.hc || defaults.headingColor;
+                            o.fontWeight = m.fw || defaults.fontWeight;
+                        } else {
+                            o.labelSize = m.ls || defaults.labelSize;
+                            o.labelWeight = m.lw || defaults.labelWeight;
+                            o.labelStyle = m.lst || defaults.labelStyle;
+                            o.valueSize = m.vs || defaults.valueSize;
+                            o.valueWeight = m.vw || defaults.valueWeight;
+                            o.valueStyle = m.vst || defaults.valueStyle;
+                        }
+                        return o;
+                    });
+                    
+                    // Map compacted colors back, using defaults if missing
+                    const c = setupData.c || {};
+                    dataToLoad = { 
+                        config: rehydratedConfig, 
+                        colors: { 
+                            bgColor: c.bg || '#1f2937', // NEW: Background Color
+                            outline: c.o || '#FFFFFF', 
+                            outlineWidth: c.ow || 2, 
+                            label: c.l || '#9CA3AF', 
+                            value: c.v || '#FFFFFF'
+                        } 
+                    };
+
+                } catch(e) {
+                    console.error("Raw Payload Parse Error:", e);
+                    $('authStatus').innerText = "❌ Raw Payload is corrupted or malformed.";
+                    $('authStatus').classList.remove('hidden', 'text-green-600');
+                    $('authStatus').classList.add('text-red-500');
+                    return;
+                }
+
+            } else {
+                name = $('templateNameLoad').value.toUpperCase(); 
+                key = $('encryptionKeyLoad').value.trim();
+                
+                if (!name || !key) {
+                    showToast("Missing Template Name or Key", "error");
+                    return;
+                }
+
+                try {
+                    const store = JSON.parse(localStorage.getItem(TEMPLATE_STORAGE_KEY) || '{}');
+                    if(!store[name]) throw new Error("Template not found");
+                    const data = JSON.parse(store[name]);
+                    await decrypt(data.verifyHash, key); // Authentication check
+                    dataToLoad = data;
+                } catch(e) {
+                    showToast("Load Failed: " + e.message);
+                    $('authStatus').innerText = "❌ Load Failed: Invalid Key or Name";
+                    $('authStatus').classList.remove('hidden', 'text-green-600');
+                    $('authStatus').classList.add('text-red-500');
+                    return;
+                }
+            }
+
+            // Common success logic
+            encryptionKey = key; 
+            loadedTemplateName = name; 
+            loadedTemplateConfig = dataToLoad.config; 
+            loadedColors = dataToLoad.colors;
+            
+            // Apply loaded background color to generator preview
+            $('boardingPassContainer').style.backgroundColor = loadedColors.bgColor;
+            
+            $('authStatus').innerText = "✅ Loaded"; $('authStatus').classList.remove('hidden', 'text-red-500');
+            $('authStatus').classList.add('text-green-600');
+            $('creation-section').classList.remove('opacity-50','pointer-events-none');
+            $('keyStatusDot').className = "w-2 w-2 rounded-full bg-green-500 mr-2"; $('secretKeyDisplay').innerText = "KEY LOADED";
+            
+            renderInputForm();
         }
 
-        // --- GENERATOR LOGIC ---
+        // --- GENERATOR LOGIC (Rest of existing code) ---
+
         function renderInputForm() {
             $('dynamicInputForm').innerHTML = loadedTemplateConfig.filter(f => !['code','heading'].includes(f.type)).map(f => {
                 const disabled = f.type === 'sequence' ? 'disabled bg-gray-100' : 'bg-gray-50';
@@ -985,21 +1427,28 @@
             if(!isSessionActive) {
                 salesSession = [];
                 isSessionActive = true;
+                // Changed confirm to custom toast message as per instruction
+                showToast("Sales Session Started", "success");
                 btn.innerText = "Stop Session & Clear";
                 btn.className = "bg-white border border-red-300 text-red-600 font-bold py-2 rounded-lg hover:bg-red-50 text-xs transition-colors";
                 $('btnDownloadSession').disabled = false;
                 updateSessionUI();
-                showToast("Sales Session Started", "success");
             } else {
-                if(confirm("End session? All unsaved session data will be cleared.")) {
-                    isSessionActive = false;
-                    salesSession = [];
-                    btn.innerText = "Start Session";
-                    btn.className = "bg-white border border-blue-300 text-blue-700 font-bold py-2 rounded-lg hover:bg-blue-50 text-xs transition-colors";
-                    $('btnDownloadSession').disabled = true;
-                    updateSessionUI();
+                // In a real app, this should be a modal, but for this context, using a simple logic block
+                if(salesSession.length > 0) {
+                    // Note: Since we cannot use confirm(), we'll assume the user wants to end/clear if they click it a second time.
+                    // A proper implementation would require a custom modal. For now, we proceed to clear.
+                    showToast("Session Ended and Cleared", "success");
+                } else {
                     showToast("Session Ended", "success");
                 }
+                
+                isSessionActive = false;
+                salesSession = [];
+                btn.innerText = "Start Session";
+                btn.className = "bg-white border border-blue-300 text-blue-700 font-bold py-2 rounded-lg hover:bg-blue-50 text-xs transition-colors";
+                $('btnDownloadSession').disabled = true;
+                updateSessionUI();
             }
         }
 
@@ -1036,6 +1485,7 @@
                 c.style.borderStyle = 'solid';
             } else {
                 // Restore styling from loaded config
+                c.style.backgroundColor = loadedColors.bgColor; // Apply loaded background color
                 c.style.borderColor = loadedColors.outline; 
                 c.style.borderWidth = loadedColors.outlineWidth + 'px'; 
                 c.style.borderStyle = 'solid';
@@ -1109,7 +1559,11 @@
                         else val = d.toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); 
                     } 
                     if(f.type === 'checkbox') val = val === true ? '☑' : '☐'; 
-                    el.innerHTML = `<div class="pass-label" style="color:${loadedColors.label}">${f.name}</div><div class="pass-value" style="color:${loadedColors.value}">${val}</div>`; 
+                    
+                    const labelStyle = `color:${loadedColors.label}; font-size:${f.labelSize}px; font-weight:${f.labelWeight}; font-style:${f.labelStyle}`;
+                    const valueStyle = `color:${loadedColors.value}; font-size:${f.valueSize}px; font-weight:${f.valueWeight}; font-style:${f.valueStyle};`;
+
+                    el.innerHTML = `<div class="pass-label" style="${labelStyle}">${f.name}</div><div class="pass-value" style="${valueStyle}">${val}</div>`; 
                 }
                 c.appendChild(el);
             });
@@ -1117,12 +1571,269 @@
         async function downloadPdf() {
             const { jsPDF } = window.jspdf; const el = $('boardingPassContainer'); if(el.children.length === 0) return showToast("Please generate a ticket first.");
             const origScale = el.style.transform; el.style.transform = 'scale(1)'; el.style.boxShadow = 'none';
+            // Use the determined background color for PDF generation
+            const bgColor = $('genQrOnly').checked ? '#ffffff' : loadedColors.bgColor;
+
             // Use CANVAS_WIDTH and CANVAS_HEIGHT for PDF dimensions
-            const cvs = await html2canvas(el, { scale: 3, backgroundColor: $('genQrOnly').checked ? '#ffffff' : '#1f2937' }); el.style.transform = origScale; el.style.boxShadow = '';
+            const cvs = await html2canvas(el, { scale: 3, backgroundColor: bgColor }); 
+            el.style.transform = origScale; 
+            el.style.boxShadow = '';
+            
             const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: [CANVAS_WIDTH, CANVAS_HEIGHT] }); 
             pdf.addImage(cvs.toDataURL('image/png'), 'PNG', 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); 
             pdf.save('Wallet_Pass.pdf');
         }
+
+        // --- SPECIAL AGE ALERT LOGIC ---
+
+        function createAgeAlertHtml(index, mode = 'younger', age1 = 18, age2 = 0, color = '#FFA500', text = 'Special Condition') {
+            const isRange = mode === 'between';
+            const hideRangeClass = isRange ? '' : 'hidden';
+            
+            // Generate a contrasting text color for the title of the alert box (usually dark for light colors, light for dark colors)
+            // Simple heuristic: If color luminosity is > 0.5 (light), use dark text. Otherwise, use light text.
+            const r = parseInt(color.slice(1, 3), 16);
+            const g = parseInt(color.slice(3, 5), 16);
+            const b = parseInt(color.slice(5, 7), 16);
+            // Luminosity calculation (W3C standard: (0.299*R + 0.587*G + 0.114*B) / 255)
+            const luminosity = (0.299 * r + 0.587 * g + 0.114 * b) / 255; 
+            const headerColor = luminosity > 0.5 ? '#374151' : color; // Use gray-700 for light background
+            const headerTextColor = luminosity > 0.5 ? '#111827' : '#FFFFFF';
+
+            return `
+                <div id="age-alert-${index}" class="p-3 rounded-lg space-y-2" style="border: 2px solid ${color}; background-color: ${color}20;">
+                    <div class="flex justify-between items-start">
+                        <div class="text-xs font-bold" id="alert-title-${index}" style="color: ${headerColor};">${text.toUpperCase()}</div>
+                        <button onclick="removeAgeAlert(${index})" class="text-red-500 hover:text-red-700 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 102 0v6a1 1 0 10-2 0V8z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <select id="alert-mode-${index}" class="rule-input text-xs flex-1" onchange="toggleAgeAlertInput(${index}); updateAgeAlertStyle(${index})">
+                            <option value="younger" ${mode === 'younger' ? 'selected' : ''}>Younger Than</option>
+                            <option value="older" ${mode === 'older' ? 'selected' : ''}>Older Than</option>
+                            <option value="between" ${mode === 'between' ? 'selected' : ''}>Between</option>
+                        </select>
+                        
+                        <input type="number" id="alert-age1-${index}" value="${age1}" placeholder="Age" class="rule-input w-16 text-center" oninput="updateAgeAlertStyle(${index})">
+                        
+                        <span id="age-and-${index}" class="text-xs text-gray-500 ${hideRangeClass}">and</span>
+                        <input type="number" id="alert-age2-${index}" value="${age2}" placeholder="Max Age" class="rule-input w-16 text-center ${hideRangeClass}" oninput="updateAgeAlertStyle(${index})">
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+                        <input type="text" id="alert-text-${index}" value="${text}" placeholder="Alert Message" class="rule-input flex-1 mr-4" oninput="updateAgeAlertStyle(${index})">
+                        <div class="color-input-wrapper">
+                            <input type="color" id="alert-color-${index}" value="${color}" onchange="updateAgeAlertStyle(${index})">
+                            <span>Color</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateAgeAlertStyle(index) {
+            const el = $(`age-alert-${index}`);
+            if (!el) return;
+            const colorInput = $(`alert-color-${index}`).value;
+            const titleEl = $(`alert-title-${index}`);
+            
+            // Simple luminosity check for contrasting text color in the rule box
+            const r = parseInt(colorInput.slice(1, 3), 16);
+            const g = parseInt(colorInput.slice(3, 5), 16);
+            const b = parseInt(colorInput.slice(5, 7), 16);
+            const luminosity = (0.299 * r + 0.587 * g + 0.114 * b) / 255; 
+            const titleColor = luminosity > 0.5 ? '#1f2937' : colorInput; // Darker text for light backgrounds, or keep color input otherwise
+
+            // Apply new styles
+            el.style.border = `2px solid ${colorInput}`;
+            el.style.backgroundColor = `${colorInput}20`; // Light tint for container background
+            if (titleEl) {
+                titleEl.style.color = titleColor;
+                titleEl.innerText = $(`alert-text-${index}`).value.toUpperCase() || 'SPECIAL CONDITION';
+            }
+        }
+
+        function addNewAgeAlert(mode = 'younger', age1 = 18, age2 = 0, color = '#FFA500', text = 'Underage Alert') {
+            const container = $('ageSpecialAlertsContainer');
+            // We check children excluding the H4 header
+            const existingAlerts = container.children.length - 1; 
+            
+            if (existingAlerts >= 3) {
+                return showToast("Maximum of 3 special alerts allowed.", "error", "top-right");
+            }
+
+            const index = ageAlertCounter++;
+            const html = createAgeAlertHtml(index, mode, age1, age2, color, text);
+            // Insert the new alert *after* the h4 header
+            container.insertAdjacentHTML('beforeend', html);
+            // Call style update once to initialize the correct colors
+            setTimeout(() => updateAgeAlertStyle(index), 0);
+            updateAgeAlertButton();
+        }
+
+        function removeAgeAlert(index) {
+            const element = $(`age-alert-${index}`);
+            if (element) {
+                element.remove();
+                updateAgeAlertButton();
+            }
+        }
+
+        function toggleAgeAlertInput(index) {
+            const mode = $(`alert-mode-${index}`).value;
+            const age2Input = $(`alert-age2-${index}`);
+            const ageAndSpan = $(`age-and-${index}`);
+
+            if (mode === 'between') {
+                age2Input.classList.remove('hidden');
+                ageAndSpan.classList.remove('hidden');
+            } else {
+                age2Input.classList.add('hidden');
+                ageAndSpan.classList.add('hidden');
+            }
+        }
+
+        function updateAgeAlertButton() {
+            const container = $('ageSpecialAlertsContainer');
+            // We check children excluding the H4 header
+            const existingAlerts = container.children.length - 1; 
+            const btn = $('addAgeAlertBtn');
+            
+            if (existingAlerts >= 3) {
+                btn.disabled = true;
+            } else {
+                btn.disabled = false;
+            }
+        }
+
+        function getAgeAlertRules() {
+            const rules = [];
+            const container = $('ageSpecialAlertsContainer');
+            // Select the dynamic alert rule containers based on their injected ID pattern
+            const ruleElements = container.querySelectorAll('[id^="age-alert-"]');
+            
+            ruleElements.forEach(el => {
+                const idIndex = el.id.split('-').pop(); // e.g., '123'
+                
+                const mode = $(`alert-mode-${idIndex}`).value;
+                // Use || 0 to ensure parsing failure results in 0, not NaN
+                const age1 = parseInt($(`alert-age1-${idIndex}`).value) || 0;
+                let age2 = 0;
+
+                if (mode === 'between') {
+                    age2 = parseInt($(`alert-age2-${idIndex}`).value) || 0;
+                }
+                
+                rules.push({
+                    mode: mode,
+                    age1: age1, // Lower bound (or only bound)
+                    age2: age2, // Upper bound (only used for 'between')
+                    color: $(`alert-color-${idIndex}`).value,
+                    text: $(`alert-text-${idIndex}`).value.trim() || 'Special Condition',
+                });
+            });
+            
+            return rules;
+        }
+        
+        // --- TIME VALIDATION LOGIC ---
+        function toggleTimeInputs() {
+            const mode = $('ruleTimeMode').value;
+            // Hide all panels
+            $('timeInputCurrentDateTimeRange').classList.add('hidden');
+            $('timeInputSpecificDateTime').classList.add('hidden');
+            
+            // Show necessary panels based on mode
+            if (mode === 'currentDateTimeRange') {
+                $('timeInputCurrentDateTimeRange').classList.remove('hidden');
+            } else if (mode === 'specificDateTime') {
+                $('timeInputSpecificDateTime').classList.remove('hidden');
+            }
+        }
+
+        function getTimeValidationResult(ticketData, verifierConfig) {
+            const mode = $('ruleTimeMode').value;
+            const df = verifierConfig.find(f => f.t === 'date');
+            const ticketDate = df && ticketData[df.name] ? new Date(ticketData[df.name]) : null;
+            const now = new Date();
+            const timeColor = $('ruleTimeColor').value;
+            // Use local date string to avoid timezone issues when comparing date-only parts
+            const todayISO = now.toLocaleDateString('en-CA'); // YYYY-MM-DD
+            
+            if (!df || !ticketDate) {
+                // If there is no date field on the ticket, only check specific non-ticket modes
+                if (mode === 'expiryCheck' || mode === 'ticketDateMatchToday') {
+                    return { valid: true, error: "No Date field on ticket." };
+                }
+            }
+
+            if (mode === 'expiryCheck') {
+                // 1. Standard Expiry Check (Ticket is invalid if date/time has passed)
+                // We compare the full datetime stamp on the ticket against the current time.
+                if (ticketDate < now) { 
+                    return { valid: false, error: "Ticket expired.", color: timeColor };
+                }
+                
+            } else if (mode === 'ticketDateMatchToday') {
+                // 2. Ticket Date Must Match Today (Valid only if the ticket date part is today's date)
+                // We compare date strings (YYYY-MM-DD) to ignore the time component.
+                const ticketDateISO = ticketDate.toLocaleDateString('en-CA');
+                if (ticketDateISO !== todayISO) {
+                    return { valid: false, error: `Valid only on ${todayISO}.`, color: timeColor };
+                }
+                
+            } else if (mode === 'currentDateTimeRange') {
+                // 3. Current Date + Time Range (Must be current date AND fall within specified time range)
+                const startRange = $('ruleTimeStartRange').value; // HH:MM
+                const endRange = $('ruleTimeEndRange').value;     // HH:MM
+                
+                if (!startRange || !endRange) return { valid: true, error: "Time range not configured." };
+                
+                // Construct Date objects for comparison on the current day
+                const [startHour, startMin] = startRange.split(':').map(Number);
+                const [endHour, endMin] = endRange.split(':').map(Number);
+
+                const startToday = new Date(now);
+                startToday.setHours(startHour, startMin, 0, 0);
+
+                const endToday = new Date(now);
+                endToday.setHours(endHour, endMin, 0, 0);
+                
+                // Compare current time 'now' against the defined time window
+                if (endToday < startToday) {
+                    // Range crosses midnight (e.g., 23:00 to 02:00)
+                    if (now < startToday && now > endToday) {
+                        return { valid: false, error: "Outside permitted time window.", color: timeColor };
+                    }
+                } else {
+                    // Standard range (e.g., 09:00 to 17:00)
+                    if (now < startToday || now > endToday) {
+                        return { valid: false, error: "Outside permitted time window.", color: timeColor };
+                    }
+                }
+
+            } else if (mode === 'specificDateTime') {
+                // 4. Specific Date and Entered Time (Ticket must match or exceed this specific point in time)
+                // We check if the current time is beyond the manually entered gate time.
+                const validDate = $('ruleTimeValidDate').value;
+                const validTime = $('ruleTimeValidTime').value;
+
+                if (!validDate || !validTime) return { valid: true, error: "Specific date/time not fully configured." };
+
+                // Construct a date object representing the required point in time
+                const requiredTime = new Date(`${validDate}T${validTime}:00`);
+                
+                // Check if current time has passed the required gate time
+                if (requiredTime > now) {
+                    return { valid: false, error: `Invalid until ${requiredTime.toLocaleString()}`, color: timeColor };
+                }
+            }
+            
+            return { valid: true, error: "" };
+        }
+
 
         // --- SCANNER/VERIFY ---
         function startScanner(mode) { 
@@ -1219,17 +1930,44 @@
                     verifierConfig = d.f.map(m => {
                         const o = { name: m.n, t: m.t, x: m.x, y: m.y };
                         if(m.h) o.hidden = true; 
-                        if(m.s) o.qrSize = m.s;
-                        if(m.dm) o.dateMode = m.dm;
+                        
+                        const defaults = {
+                            qrSize: 200, dateMode: 'date', 
+                            labelSize: 10, labelWeight: '500', labelStyle: 'normal',
+                            valueSize: 16, valueWeight: '700', valueStyle: 'normal',
+                            text: 'HEADING', headingColor:'#FFF', fontSize:24, fontWeight:'700', 
+                        };
+                        
+                        // Map compacted properties back, using defaults if missing
+                        o.qrSize = m.s || defaults.qrSize;
+                        o.dateMode = m.dm || defaults.dateMode;
+                        
                         if(m.t === 'heading') {
-                            o.text = m.ht;
-                            o.fontSize = m.fs;
-                            o.headingColor = m.hc;
-                            o.fontWeight = m.fw;
+                            o.text = m.ht || defaults.text;
+                            o.fontSize = m.fs || defaults.fontSize;
+                            o.headingColor = m.hc || defaults.headingColor;
+                            o.fontWeight = m.fw || defaults.fontWeight;
+                        } else {
+                            o.labelSize = m.ls || defaults.labelSize;
+                            o.labelWeight = m.lw || defaults.labelWeight;
+                            o.labelStyle = m.lst || defaults.labelStyle;
+                            o.valueSize = m.vs || defaults.valueSize;
+                            o.valueWeight = m.vw || defaults.valueWeight;
+                            o.valueStyle = m.vst || defaults.valueStyle;
                         }
+
                         return o;
                     }); 
-                    verifierColors = { outline: d.c.o, outlineWidth: d.c.ow, label: d.c.l, value: d.c.v }; 
+                    
+                    const c = d.c || {};
+                    verifierColors = { 
+                        bgColor: c.bg || '#1f2937', // NEW: Background Color
+                        outline: c.o || '#FFFFFF', 
+                        outlineWidth: c.ow || 2, 
+                        label: c.l || '#9CA3AF', 
+                        value: c.v || '#FFFFFF'
+                    };
+
                     $('verifierTemplateName').value = d.n; 
                     $('verifierStatus').innerText = `Active: ${d.n}`; 
                     $('verifierStatus').className = "text-xs text-green-600 font-bold"; 
@@ -1262,11 +2000,13 @@
                     let fieldErrors = {}; // New object to track field-specific errors
 
                     if($('ruleAgeEnabled').checked) { 
-                        const min=parseInt($('ruleAgeMin').value)||0, max=parseInt($('ruleAgeMax').value)||200, ath=parseInt($('ruleAgeAlertThreshold').value)||18;
-                        const af=verifierConfig.find(f=>f.type==='age'||f.name.toLowerCase()==='age'); 
+                        const min=parseInt($('ruleAgeMin').value)||0, max=parseInt($('ruleAgeMax').value)||200;
+                        const af=verifierConfig.find(f=>f.t==='age'||f.name.toLowerCase()==='age'); 
                         if(af&&d[af.name]) { 
                             const fieldName = af.name;
                             const a=parseInt(d[af.name]); 
+                            
+                            // Check for standard Min/Max rules first
                             if(a<min){
                                 val=false;
                                 err.push(`Age < ${min}`);
@@ -1277,66 +2017,62 @@
                                 err.push(`Age > ${max}`);
                                 fieldErrors[fieldName] = { color: '#ef4444', message: `Too old (> ${max})` };
                             } 
-                            // If still valid, check for alert threshold
-                            if(val && a<ath){
-                                col=$('ruleAgeAlertColor').value;
-                                stat=`VALID (UNDER ${ath})`;
-                                fieldErrors[fieldName] = { color: col, message: `Under ${ath} (Alert)` };
-                            } 
+                            
+                            // Check for special age alerts (regardless of min/max check result, but the special alert takes priority for styling/status)
+                            const specialAlerts = getAgeAlertRules();
+                            for (const alert of specialAlerts) {
+                                let match = false;
+                                
+                                // Normalize ages for "between" in case they are entered backward
+                                const normalizedAge1 = Math.min(alert.age1, alert.age2);
+                                const normalizedAge2 = Math.max(alert.age1, alert.age2);
+
+                                if (alert.mode === 'younger' && a < alert.age1) {
+                                    match = true;
+                                } else if (alert.mode === 'older' && a > alert.age1) {
+                                    match = true;
+                                } else if (alert.mode === 'between' && a >= normalizedAge1 && a <= normalizedAge2) {
+                                    match = true;
+                                }
+                                
+                                if (match) {
+                                    // A special alert is *always* valid unless it is explicitly an error condition
+                                    // Here we treat it as an IMPORTANT status override. It overwrites the main ticket color (col) and status (stat).
+                                    // It also overwrites any field error color set by min/max checks.
+                                    col = alert.color; // Overwrite global color with the alert color
+                                    stat = `VALID (${alert.text})`; // Overwrite global status
+                                    
+                                    // Apply style to the age field specifically
+                                    fieldErrors[af.name] = { color: alert.color, message: alert.text };
+                                    
+                                    // We still keep the original 'val' status unless the alert is explicitly defined as an error
+                                    // Assuming a special alert is just a warning/status update, not an invalidation.
+                                    // Stop after the first match to ensure priority order is maintained
+                                    break;
+                                }
+                            }
                         } 
                     }
 
                     if($('ruleTimeEnabled').checked) { 
-                        const m=$('ruleTimeMode').value, n=new Date();
-                        const df=verifierConfig.find(f=>f.type==='date');
-                        const td=df&&d[df.name]?new Date(d[df.name]):null;
-                        
-                        if (df && td) {
-                            const fieldName = df.name;
-                            if(m==='range'){
-                                const s=$('ruleTimeStart').value?new Date($('ruleTimeStart').value):null, e=$('ruleTimeEnd').value?new Date($('ruleTimeEnd').value):null; 
-                                if(s&&n<s){
-                                    val=false;
-                                    err.push("Not Started");
-                                    col=$('ruleTimeColor').value;
-                                    fieldErrors[fieldName] = { color: col, message: "Not Started" };
-                                } 
-                                if(e&&n>e){
-                                    val=false;
-                                    err.push("Expired");
-                                    col=$('ruleTimeColor').value;
-                                    fieldErrors[fieldName] = { color: col, message: "Expired" };
-                                } 
-                                if(td&&!s&&!e&&td<n){
-                                    // This path is usually only if date mode is not explicitly set in generator
-                                    val=false;
-                                    err.push("Date Passed");
-                                    col=$('ruleTimeColor').value;
-                                    fieldErrors[fieldName] = { color: col, message: "Date Passed" };
-                                }
-                            } else if(m==='single'){
-                                const vd=$('ruleTimeSingleDate').value; 
-                                if(vd&&td&&td.toISOString().split('T')[0]!==vd){
-                                    val=false;
-                                    err.push(`Wrong Date`);
-                                    col=$('ruleTimeColor').value;
-                                    fieldErrors[fieldName] = { color: col, message: `Wrong Date` };
-                                }
-                            } else if(m==='start'){
-                                const es=$('ruleTimeEventStart').value?new Date($('ruleTimeEventStart').value):null; 
-                                if(es&&td&&td<es){
-                                    val=false;
-                                    err.push("Too Early");
-                                    col=$('ruleTimeColor').value;
-                                    fieldErrors[fieldName] = { color: col, message: "Too Early" };
-                                }
+                        const timeResult = getTimeValidationResult(d, verifierConfig);
+
+                        if (!timeResult.valid) {
+                            val = false;
+                            err.push(timeResult.error);
+                            col = timeResult.color;
+                            
+                            // Find the date field on the ticket if it exists to apply the error color
+                            const df=verifierConfig.find(f=>f.t==='date');
+                            if (df) {
+                                fieldErrors[df.name] = { color: timeResult.color, message: timeResult.error };
                             }
                         }
                     }
 
                     // Duplicates and Custom Logic checks (Dupe check is system-wide, Custom can set color/status)
                     if($('ruleDupesEnabled').checked) { 
-                        const uid=d._id, sf=verifierConfig.find(f=>f.type==='sequence'), id=uid||(sf?d[sf.name]:null); 
+                        const uid=d._id, sf=verifierConfig.find(f=>f.t==='sequence'), id=uid||(sf?d[sf.name]:null); 
                         if(id){
                             const k=USED_TICKETS_PREFIX+nm, u=JSON.parse(localStorage.getItem(k)||'[]'); 
                             if(u.includes(id)){
@@ -1390,6 +2126,9 @@
                     // Set canvas size dynamically in the verifier preview
                     card.style.width = CANVAS_WIDTH + 'px';
                     card.style.height = CANVAS_HEIGHT + 'px';
+                    
+                    // Apply verified background color
+                    card.style.backgroundColor = verifierColors.bgColor;
 
                     verifierConfig.forEach(f => {
                         if(f.hidden) return; 
@@ -1398,21 +2137,31 @@
                         el.style.position='absolute'; 
                         el.style.left=f.x+'px'; 
                         el.style.top=f.y+'px'; 
+
+                        const fieldError = fieldErrors[f.name];
+                        let labelColor = verifierColors.label;
+                        let valueColor = verifierColors.value;
+                        let labelStyle = '';
+                        let valueStyle = '';
                         
                         // Check for field-specific error and apply style
-                        const fieldError = fieldErrors[f.name];
-                        if (fieldError) {
+                        if (f.t !== 'heading' && f.t !== 'code' && fieldError) {
+                            // Apply alert color as background
+                            el.style.backgroundColor = fieldError.color; 
                             el.style.border = `2px solid ${fieldError.color}`;
-                            // Use a light tint of the error color (20% opacity)
-                            el.style.backgroundColor = `${fieldError.color}20`; 
+                            // Force text to white for contrast
+                            labelColor = '#FFFFFF';
+                            valueColor = '#FFFFFF';
                         } else {
-                            // Ensure non-error fields are still styled correctly (padding matters)
+                            // Restore default styles
                             el.style.border = '1px solid transparent';
                             el.style.backgroundColor = 'transparent';
                         }
                         
-                        if(f.type==='heading') el.innerHTML=`<div class="pass-heading" style="color:${f.headingColor}; font-size:${f.fontSize}px; font-weight:${f.fontWeight}">${f.text}</div>`; 
-                        else if(f.type === 'code') {
+                        if(f.t==='heading') {
+                            el.innerHTML=`<div class="pass-heading" style="color:${f.headingColor}; font-size:${f.fontSize}px; font-weight:${f.fontWeight}">${f.text}</div>`; 
+                        }
+                        else if(f.t === 'code') {
                             // Placeholder for QR code to maintain layout
                             const s = f.qrSize || 100;
                             el.style.width = s + 'px';
@@ -1422,9 +2171,19 @@
                         }
                         else {
                             let v=d[f.name]; 
-                            if(f.type==='checkbox') v=v===true||v==='on'?'☑':'☐'; 
-                            if(f.type==='date') v=new Date(v).toLocaleDateString(); 
-                            el.innerHTML=`<div class="pass-label" style="color:${verifierColors.label}">${f.name}</div><div class="pass-value" style="color:${verifierColors.value}">${v}</div>`;
+                            if(f.t==='checkbox') v=v===true||v==='on'?'☑':'☐'; 
+                            if(f.t==='date') {
+                                const ticketDateObj = new Date(v);
+                                if (f.dateMode === 'date') v = ticketDateObj.toLocaleDateString(); 
+                                else if (f.dateMode === 'time') v = ticketDateObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); 
+                                else v = ticketDateObj.toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); 
+                            } 
+                            
+                            // Apply configured/overridden styles
+                            labelStyle = `color:${labelColor}; font-size:${f.labelSize}px; font-weight:${f.labelWeight}; font-style:${f.labelStyle}`;
+                            valueStyle = `color:${valueColor}; font-size:${f.valueSize}px; font-weight:${f.valueWeight}; font-style:${f.valueStyle};`;
+                            
+                            el.innerHTML=`<div class="pass-label" style="${labelStyle}">${f.name}</div><div class="pass-value" style="${valueStyle}">${v}</div>`;
                         } 
                         card.appendChild(el);
                     });
